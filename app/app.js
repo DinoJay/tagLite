@@ -183,6 +183,9 @@ function create(diigo) {
 
   var cont = d3.select(".node-map");
 
+
+  cont.append("div")
+      .attr("class", "tipsy")
   cont.append("div")
     .attr("id", "tooltip")
     .attr("class", "tnt_tooltip");
@@ -229,7 +232,7 @@ function update(foci) {
   tooltip = d3.select("#tooltip");
 
   hullLabelCont.selectAll("*").remove();
-  d3.selectAll(".bubbleHandle").remove();
+  d3.selectAll(".bubble").remove();
   d3.selectAll(".bd").remove();
 
   var zoomHandler = d3.zoom()
@@ -306,18 +309,19 @@ function update(foci) {
 
   var textPath = labelGEnter
     .append("g")
+    .attr("class", d => "comp-"+ d.id)
     .append("text")
     .append("textPath")
       .attr("class", d => "label-cont-" + d.id + " textPath")
       .attr("text-anchor", "start")
-      // .attr("startOffset", "35%")
-      .attr("alignment-baseline", "text-after-edge")
-      .attr("dominant-baseline", "baseline")
+      .attr("startOffset", "35%")
+      // .attr("alignment-baseline", "text-after-edge")
+      // .attr("dominant-baseline", "baseline")
       .attr("id", d => "tp-hull" + d.id)
       .attr("xlink:href", d => "#hull-" + d.id);
 
   textPath.selectAll("tspan")
-    .data(d => d.sets.slice(0, 7).reverse())
+    .data(d => d.sets.slice(0, 7))
     .enter()
     .append("tspan")
     .call(styleTspan(wordScale));
@@ -422,7 +426,20 @@ function update(foci) {
     .enter()
     .append("g")
     .attr("class", "dummy")
-    .on("mouseover", d => console.log(d.interSet))
+    .on("mouseover", d => {
+
+      var x = d3.event.clientX;
+      var y = d3.event.clientY - 15;
+      d3.select("#tag-tooltip")
+        .style("left", x + "px")
+        .style("top", y + "px")
+        .style("display", "block")
+        .style("opacity", 0.8)
+        .style("visibility", "visible")
+        .select(".tipsy-inner")
+        .text(d.interSet.join(", "));
+
+    })
     .on("click", function(d) {
       // console.log("src", d.source, "tgt", d.target);
       // d3.selectAll(".bundle-link-" + d.source + "-" + d.target + " bd")
@@ -433,6 +450,7 @@ function update(foci) {
       var hull = d3.select("#hull-" + d.focus);
       console.log("hull", hull);
       hull.call(programmaticZoom(0.6));
+
     });
 
 
@@ -583,12 +601,12 @@ function update(foci) {
       // TODO: hull zoom
       // this happens in a for loop
       var bubbleGroup = backdropCont
-         .selectAll(".bubbleX" + group.key)
+         .selectAll(".bubble" + group.key)
          .data([group]);
 
       var bubbleGroupEnter = bubbleGroup.enter()
         .append("g")
-        .attr("class", "bubbleX" + group.key +  " bubbleHandle");
+        .attr("class", "bubble" + group.key +  " bubble");
 
       var bubble = bubbleGroupEnter.selectAll("path")
         .data(d => d.path);
@@ -614,17 +632,18 @@ function update(foci) {
       }, [{values: foci.nodes()}], 0.003);
 
     nodes.comps.forEach((c, i) => {
+
+      var compNode = d3.select(".comp-" +c.id);
       marching_squares(group => {
         // TODO: not running right now
         // this happens in a for loop
-
-        var bubbleGroup = bubbleCont
-           .selectAll(".bubbleX" + group.key + i)
+        var bubbleGroup = compNode
+           .selectAll(".bubble" + group.key + i)
            .data([group]);
 
         var bubbleGroupEnter = bubbleGroup.enter()
           .append("g")
-          .attr("class", "bubbleX" + group.key + i + " bubbleHandle");
+          .attr("class", "bubble" + group.key + i);
 
         var bubble = bubbleGroupEnter.selectAll("path")
           .data(d => d.path);
@@ -651,7 +670,7 @@ function update(foci) {
             var sets = c.sets.filter(d => group.interTags.includes(d.key));
             console.log("sets", sets);
             var tp = d3.selectAll(".textPath").filter(d => d.id === c.id);
-            // console.log("ts", ts);
+            console.log("compNode", compNode);
 
             tp.selectAll("tspan").remove();
             tp.selectAll("tspan")
@@ -662,16 +681,24 @@ function update(foci) {
 
             d3.selectAll(".doc")
               .filter(d => c.nodes.map(e => e.id).includes(d.id))
-              .style("opacity", 0.1);
+              .style("opacity", 0.01);
 
             var ids = group.values.map(d => d.id);
             d3.selectAll(".doc")
               .filter(d => ids.includes(d.id))
               .style("opacity", 1);
+
+            compNode.selectAll("g").select("path")
+              .style("opacity", 0.01);
+            compNode.selectAll(".bubble" + group.key + i).select("path")
+              .style("opacity", 1);
           })
           .on("mouseout", function() {
             d3.select(this).attr("opacity", 0.5);
             d3.selectAll(".doc").style("opacity", 1);
+
+            compNode.selectAll("g").select("path")
+              .style("opacity", 0.5);
 
             var tp = d3.selectAll(".textPath").filter(d => d.id === c.id);
             tp.selectAll("tspan").remove();
@@ -736,7 +763,7 @@ function update(foci) {
 }
 
 d3.json("diigo.json", function(error, data) {
-  var diigo = data.slice(0, 200).map((d, i) => {
+  var diigo = data.slice(0, 100).map((d, i) => {
     d.tags = d.tags.split(",");
     d.id = i;
     return d;
