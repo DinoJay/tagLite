@@ -49,139 +49,6 @@ function connectionsIndex(a, linkedByIndex, nodes) {
   }
   return connections;
 }
-function simple_comp(nodes, links) {
-  var groups = [];
-  var visited = {};
-  var v;
-
-  // this should look like:
-  // {
-  //   "a2": ["a5"],
-  //   "a3": ["a6"],
-  //   "a4": ["a5"],
-  //   "a5": ["a2", "a4"],
-  //   "a6": ["a3"],
-  //   "a7": ["a9"],
-  //   "a9": ["a7"]
-  // }
-
-  var vertices = nodes.map(d => d.index);
-  var edgeList = links.map(l => {
-    var edge = [l.source.index, l.target.index];
-    return edge;
-  });
-  // console.log("edgeList", edgeList);
-
-  var adjlist = convert_edgelist_to_adjlist(vertices, edgeList);
-  // console.log("adjList", adjlist, adjlist.length, "vertices", vertices,
-  // vertices.length);
-
-  for (v in adjlist) {
-    if (adjlist.hasOwnProperty(v) && !visited[v]) {
-      var indices = bfs(v, adjlist, visited);
-      groups.push(indices.map(i => nodes[i]));
-    }
-  }
-  return groups.map(g => g.filter(d => d));
-}
-
-var bfs = function(v, adjlist, visited) {
-  var q = [];
-  var current_group = [];
-  var i, len, adjV, nextVertex;
-  q.push(v);
-  visited[v] = true;
-  // var max = 10;
-  while (q.length > 0) {
-    v = q.shift();
-    current_group.push(v);
-    // Go through adjacency list of vertex v, and push any unvisited
-    // vertex onto the queue.
-    // This is more efficient than our earlier approach of going
-    // through an edge list.
-    adjV = adjlist[v];
-    for (i = 0, len = adjV.length; i < len; i += 1) {
-      nextVertex = adjV[i];
-      if (!visited[nextVertex]) {
-        q.push(nextVertex);
-        visited[nextVertex] = true;
-      }
-    }
-  }
-  return current_group;
-};
-
-var convert_edgelist_to_adjlist = function(vertices, edgelist) {
-  var adjlist = {};
-  var i, len, pair, u, v;
-  for (i = 0, len = edgelist.length; i < len; i += 1) {
-    pair = edgelist[i];
-    u = pair[0];
-    v = pair[1];
-    // if (vertices.indexOf(u) === -1 || vertices.indexOf(v) === -1) continue;
-    if (adjlist[u]) {
-      // append vertex v to edgelist of vertex u
-      adjlist[u].push(v);
-    } else {
-      // vertex u is not in adjlist, create new adjacency list for it
-      adjlist[u] = [v];
-    }
-    // two way
-    if (adjlist[v]) {
-      adjlist[v].push(u);
-    } else {
-      adjlist[v] = [u];
-    }
-  }
-  vertices.forEach(v => {
-    if (!adjlist.hasOwnProperty(v)) adjlist[v] = [];
-  });
-  return adjlist;
-};
-
-function deriveSets(nodes) {
-  if (!nodes) return this._groups;
-
-  var realNodes = nodes.filter(d => !d.label);
-
-  var spread_data = _.flatten(realNodes.map(n => {
-    var clones = n.tags.map(t => {
-      var clone = _.cloneDeep(n);
-      clone.tag = t;
-      return clone;
-    });
-    return clones;
-  }));
-
-  var nested_data = d3.nest()
-    .key(d => d.tag)
-    .entries(spread_data).filter(d => d.values.length > 0);
-
-  var groups = nested_data.map(g => {
-    g.id = g.key;
-    return g;
-  });
-
-  // labelNodes.forEach(l => {
-  //   groups.forEach(g => {
-  //     if (l.interSet.indexOf(g.key) !== -1) {
-  //       // l.text = g.id;
-  //       // TODO: dirty hack, fix this
-  //       // l.id = g.id + " label";
-  //       // console.log("label with group!");
-  //       g.values.push(l);
-  //     }
-  //     // else console.log("label without group!");
-  //   });
-  // });
-
-  // groups.forEach(d => {
-  //   d.values = d.values.map(d => d.data);
-  // });
-
-  return groups;
-}
-
 
 function extractSets(data) {
 
@@ -248,6 +115,7 @@ function initSets(data) {
   var setData = extractSets(data);
   console.log("setData", setData);
   var graph = prepareGraph(setData.values());
+
   // this._bicomps = bicomps.map(g => g.map(i => setData[i]));
   // this._cutEdges = graph.edges.filter(l => {
   //   console.log("lINk", l);

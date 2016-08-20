@@ -264,10 +264,8 @@ function runForce() {
           n.comp = id;
         }
       });
-    return g;
     });
 
-    // g.forEach(d => d.compId = id);
     var tags = d3.nest()
       .key(d => d)
       // TODO: check it later

@@ -3,7 +3,8 @@ import * as d3 from "d3";
 import _ from "lodash";
 import fociLayout from "./foci";
 import * as d3_force from "d3-force";
-import makeGraph from "./graph.js";
+import computeTagGraph from "./tagGraph.js";
+import computeCompGraph from "./componentGraph.js";
 
 import marching_squares from "./marchingSquaresHelpers.js";
 import offsetInterpolate from "./polyOffset.js";
@@ -248,7 +249,10 @@ var groupPath = function(nodes) {
 };
 
 function create(diigo) {
-  var graph = makeGraph(diigo);
+  var graph = computeTagGraph(diigo);
+  var compGraph = computeCompGraph(graph.nodes, graph.edges, 4);
+  console.log("comp graph", compGraph);
+
   var foci = fociLayout()
                 .nodes(graph.nodes)
                 .links(graph.edges)
