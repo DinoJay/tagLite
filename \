@@ -1,6 +1,9 @@
 // import d3 from "d3";
 import * as d3 from "d3";
 import _ from "lodash";
+import * as d3_force from "d3-force";
+import makeGraph frome "./graph.js";
+import {parseTime} from "./utils.js";
 
 var isCutEdge = (l, nodes, linkedByIndex, maxDepth) => {
   var tgt = nodes[l.target];
@@ -180,25 +183,28 @@ function deriveSets(nodes) {
 }
 
 
-function runForce() {
+function runForce(nodes, links, that) {
 
-  var center = this._size.map(d => d * 2/3);
-  var nodes = this._nodes;
-  var links = this._links;
+  console.log("NODes", nodes, "LinKs", links);
+  var center = that._size.map(d => d * 2/3);
 
   var linkedByIndex = {};
   links.forEach(function(l) {
     linkedByIndex[l.source + "," + l.target] = l;
   });
 
+  console.log("linkedByIndex", linkedByIndex);
 
+  console.log("linkedByIndex Force", linkedByIndex);
+  console.log("nodes Force", nodes.map(d => d.index));
   nodes.forEach(n => {
     n.outLinks = outLinks(n, nodes, linkedByIndex);
     n.inLinks = inLinks(n, nodes, linkedByIndex);
   });
 
+  console.log("sim start", "links", links);
   links.forEach(l => {
-    l.cut = isCutEdge(l, nodes, linkedByIndex, this._maxDepth);
+    l.cut = isCutEdge(l, nodes, linkedByIndex, that._maxDepth);
   });
 
   // console.log("NODES", nodes);
@@ -226,10 +232,11 @@ function runForce() {
 
   newLinks = newLinks.concat(links.filter(l => !l.cut));
 
+  console.log("cutEdges", links.filter(l => l.cut));
 
-  var simulation = d3.forceSimulation(nodes)
+  var simulation = d3_force.forceSimulation(nodes)
     // .force("charge", d3.forceManyBody())
-    .force("link", d3.forceLink()
+    .force("link", d3_force.forceLink()
              .distance(l => l.cut ? 0 : 9)
              .strength(l => {
                // var maxLen = Math.min(l.source.outLinks.length,
@@ -239,22 +246,32 @@ function runForce() {
                // return 1;
              }))
     // .force("position", d3_force.forcePosition());
-    .force("collide", d3.forceCollide((d) => d.dummy ? 25 : 7))
+    .force("collide", d3_force.forceCollide((d) => d.dummy ? 25 : 7))
+    // .force("specialCollide", (alpha) => {
+    //   var quadtree = d3.geom.quadtree(nodes);
+    //   collide2(alpha, nodes, quadtree);
+    // })
     .force("intraCollide", collide(nodes))
-    .force("center", d3.forceCenter(...center));
+    .force("center", d3_force.forceCenter(...center));
     // .alphaMin(0.4);
 
+  simulation.nodes(nodes);
   simulation.force("link").links(newLinks);
   simulation.stop();
 
   // TODO: dirty hack
-  this._nodes = nodes;
-  this._links = newLinks;
-  this._cutEdges = newLinks.filter(l => l.cut);
+  that._setNodes = nodes;
+  that._fociLinks = newLinks;
+  that._cutEdges = newLinks.filter(l => l.cut);
 
-  var reducedEdges = newLinks.filter(l => !l.cut);
+  that._reducedEdges = newLinks.filter(l => !l.cut);
+  // that._cutEdges = links.filter(l => l.cut);
 
-  var comps = simple_comp(nodes, reducedEdges).map((g, i) => {
+  // console.log("nODes", nodes);
+  // console.log("cutEdges", that._cutEdges);
+  var simpleComps = simple_comp(nodes, that._reducedEdges);
+
+  var comps = simpleComps.map((g, i) => {
     var id = i + "comp";
     var compNodes = _.flatten(g.map(d => d.nodes)).filter(d => d);
     compNodes.forEach(cn => {
@@ -264,9 +281,7 @@ function runForce() {
           n.comp = id;
         }
       });
-    return g;
     });
-
     // g.forEach(d => d.compId = id);
     var tags = d3.nest()
       .key(d => d)
@@ -295,30 +310,7 @@ function runForce() {
     simulation.tick();
   }
 
-  var cutIndex = {};
-  this._cutEdges.forEach(function(d) {
-    var src = d.source.index ? d.source.index : d.source;
-    var tgt = d.target.index ? d.target.index : d.target;
-    cutIndex[src + "," + tgt] = true;
-  });
-  console.log("comps", comps, cutIndex);
-  var compLinks = [];
-  comps.forEach(src => {
-    comps.forEach(tgt => {
-      src.values.forEach(sn => {
-        tgt.values.forEach(tn => {
-          var str = sn.index + "," + tn.index;
-          // console.log("sn", sn, tn);
-          if (cutIndex[str]) {
-            compLinks.push({source: src, target: tn});
-          }
-        });
-      });
-    });
-  });
-  console.log("COMPLINKS", compLinks);
-
-  this._comps = comps;
+  that._comps = comps;
 
   nodes.forEach(function(d) {
     d.center = {
@@ -337,35 +329,50 @@ function runForce() {
 
 
 function start() {
-  runForce.bind(this)(this._nodes, this._links);
+
+  var nodes = this.sets();
+  var links = this.links();
+
+  this._nodes = runForce(nodes, links, this);
+  // this._hierarchy = runTree(clonedNodes, clonedLinks);
 
   return this;
 }
 
-function links(arg) {
-  if (!arg) return this._links;
+function initSets(arg) {
+  if (!arg) return this._setNodes;
 
+  var graph = initSets(arg);
+  this._cachedGraph = graph;
+  this._setNodes = graph.nodes;
   // this._bicomps = bicomps.map(g => g.map(i => setData[i]));
-  this._cutEdges = arg.filter(l => {
+  this._cutEdges = graph.edges.filter(l => {
+    console.log("lINk", l);
+    console.log("nodeCount", l.nodeCount);
     return l.level % this._maxDepth === 0;
   });
 
-  this._links = arg;
-  return this;
-}
-
-function nodes(arg) {
-  if (!arg) return this._nodes;
-
-  this._nodes = arg;
+  this._fociLinks = graph.edges;
 
   return this;
 }
+
+
 
 function size(wh) {
   if (!wh) return this._size;
   this._size = wh;
   return this;
+}
+
+function connections(a) {
+  var connections = 0;
+  for (var property in this._linkedByIndex) {
+    var s = property.split(",");
+    if ((s[0] == a.index || s[1] == a.index) && this._linkedByIndex[property])
+      connections++;
+  }
+  return connections;
 }
 
 function outLinks(a, nodes, linkedByIndex) {
@@ -389,6 +396,56 @@ function inLinks(a, nodes, linkedByIndex) {
   return links;
 }
 
+function hasConnections(a, linkedByIndex) {
+  for (var property in linkedByIndex) {
+    var s = property.split(",");
+    if ((s[0] == a.index || s[1] == a.index) && linkedByIndex[property])
+      return true;
+  }
+  return false;
+}
+
+function nbsByTag(a, linkedByIndex, nodes, seen) {
+
+  var nbs = [];
+  for (var property in linkedByIndex) {
+    var s = property.split(",").map(d => parseInt(d));
+    var source = nodes[s[0]];
+    var target = nodes[s[1]];
+    var diff, interset;
+
+    if (s[0] === a) {
+      diff = _.difference(source.sets, seen);
+      interset = _.intersection(diff, target.sets);
+      if (interset.length > 0)
+        nbs.push(s[1]);
+    }
+  }
+  return _.uniq(nbs);
+}
+
+function connectionsIndex(a, linkedByIndex, nodes) {
+  var connections = 0;
+  var nb;
+  for (var property in linkedByIndex) {
+    var s = property.split(",").map(d => parseInt(d));
+    if (s[0] === a && nodes[s[1]]) {
+      nb = nodes[s[1]];
+      // console.log("nb", nb);
+      connections += nb.nodes.length;
+    } else {
+      if (s[1] === a && nodes[s[0]]) {
+        nb = nodes[s[0]];
+        // console.log("nb", nb);
+        connections += nb.nodes.length;
+      }
+
+    }
+
+  }
+  return connections;
+}
+
 const d3Foci = function() {
   return {
     _sets: null,
@@ -398,10 +455,11 @@ const d3Foci = function() {
     _cutEdges: [],
 
     size: size,
-    nodes: nodes,
-    links: links,
+    sets: initSets,
     start: start,
     groups: deriveSets,
+    nodes: function() {return this._nodes;},
+    links: function links() {return this._fociLinks;},
     comps: function() {return this._comps;},
     cutEdges: function() {return this._cutEdges;},
     reducedEdges: function() {return this._reducedEdges;}

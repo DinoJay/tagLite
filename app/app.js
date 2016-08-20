@@ -3,22 +3,107 @@ import * as d3 from "d3";
 import _ from "lodash";
 import fociLayout from "./foci";
 import * as d3_force from "d3-force";
+import makeGraph from "./graph.js";
 
 import marching_squares from "./marchingSquaresHelpers.js";
 import offsetInterpolate from "./polyOffset.js";
 
-import edgeBundling from "./edgebundling.js";
+// import edgeBundling from "./edgebundling.js";
 import brewer from "colorbrewer";
+
+var wordScale = d3.scaleLinear();
 
 require("./style/style.less");
 
+function zoomHandler(svg) {
+  return d3.zoom()
+     .extent(function() {
+       var bbox = d3.select("#zoom-hull").node().getBBox();
+       console.log("bbox", bbox);
+       return [[bbox.x, bbox.y], [bbox.x + bbox.width, bbox.y + bbox.height]];
+     })
+     .scaleExtent([-100, 40])
+     .on("zoom", function() {
+        var translate = [d3.event.transform.x, d3.event.transform.y];
+        var scale = d3.event.transform.k;
+        svg
+          .transition(1000)
+          .attr("transform", "translate(" + translate  + ")scale(" + scale + ")");
+       });
+}
+
+function programmaticZoom(zoomHandler, svg) {
+    return function(self) {
+      var bbox = self.node().getBBox(),
+        dx = bbox.width,
+        dy = bbox.height,
+        x = (bbox.x + bbox.x + bbox.width) / 2,
+        y = (bbox.y + bbox.y + bbox.height) / 2,
+        scale = Math.max(-20,
+          Math.min(2.5, 1 / Math.max(dx / width, dy / height))),
+        translate = [width / 2 - scale * x,
+          height / 2 - scale * y];
+
+      zoomHandler.transform(svg,
+        d3.zoomIdentity
+        .translate(translate[0], translate[1])
+        .scale(scale));
+    };
+  }
+
+function plotLabels(c, group, i, sets) {
+  var tp = d3.selectAll(".textPath").filter(d => d.id === c.id),
+      compNode = d3.select(".comp-" +c.id);
+  console.log("compNode", compNode);
+
+  tp.selectAll("tspan").remove();
+  tp.selectAll("tspan")
+              .data(sets, d => d.key)
+              .enter()
+              .append("tspan")
+              .call(styleTspan);
+
+  d3.selectAll(".doc")
+    .filter(d => c.nodes.map(e => e.id).includes(d.id))
+    .style("opacity", 0.01);
+
+  var ids = group.values.map(d => d.id);
+  d3.selectAll(".doc")
+    .filter(d => ids.includes(d.id))
+    .style("opacity", 1);
+
+  compNode.selectAll("g").select("path")
+    .style("opacity", 0.01);
+  compNode.selectAll(".bubble" + group.key + i).select("path")
+    .style("opacity", 1);
+}
+
+function plotLabelsLite(compId, sets) {
+  // TODO: get the tspan objects of nbs
+  var tp = d3.selectAll(".textPath").filter(d => d.id === compId),
+      compNode = d3.select(".comp-" + compId).select("textpath");
+  console.log("compNode", compNode, tp);
+  var ns = compNode.data()[0];
+  console.log("ns", ns);
+  sets = ns.sets.filter(n => sets.includes(n.key));
+  tp.selectAll("tspan").remove();
+  tp.selectAll("tspan")
+              .data(sets, d => d.key)
+              .enter()
+              .append("tspan")
+              .call(styleTspan);
+
+  // d3.selectAll(".doc")
+  //   .filter(d => compNode.data().nodes.map(e => e.id).includes(d.id))
+  //   .style("opacity", 0.01);
+}
 // bigger scale :0.0048
 //
 // const linkOpacity = 0.05;
-var dbg = d => {
-  console.log("dbg", d);
-  return d;
-};
+// var dbg = d => {
+//   console.log("dbg", d);
+//   return d;
+// };
 
 function extractTags(docNodes) {
   var spreadNodes = _.flatten(docNodes.map(d => d.tags.map(t => {
@@ -74,48 +159,46 @@ function extractNodes(foci) {
 
 }
 
-function styleTspan(wordScale) {
-  return function(self) {
-    self.attr("class", "tagLabel")
-    .attr("font-size", function(d) {
-      return wordScale(d.values.length);
-    })
-  .text(d => d.key+ " · ")
-    .on("mouseover", function(d) {
+function styleTspan(self) {
+  self.attr("class", "tagLabel")
+  .attr("font-size", function(d) {
+    return wordScale(d.values.length);
+  })
+.text(d => d.key+ " · ")
+  .on("mouseover", function(d) {
 
-      var lc = d3.selectAll(".textPath")
-        .filter(e => e.tags.map(d => d.key).includes(d.key));
-      // var selComps = lc.data();
+    var lc = d3.selectAll(".textPath")
+      .filter(e => e.tags.map(d => d.key).includes(d.key));
+    // var selComps = lc.data();
 
-      d3.select(this)
-        .style("font-weight", "bold");
-        // .style("fill", "red");
+    d3.select(this)
+      .style("font-weight", "bold");
+      // .style("fill", "red");
 
-      d.tmpSel = lc.selectAll("tspan").filter(e => e.key === d.key);
-      d.tmpSel
-        .style("font-weight", "bold")
-        .style("font-size", d => wordScale(d.values.length) + 10);
-        // .style("fill", "red");
+    d.tmpSel = lc.selectAll("tspan").filter(e => e.key === d.key);
+    d.tmpSel
+      .style("font-weight", "bold")
+      .style("font-size", d => wordScale(d.values.length) + 10);
+      // .style("fill", "red");
 
-      // selComps.forEach(src => {
-      //   selComps.forEach(c => {
-      //     var q = ".bundle-link-" + src.id + "-" + c.id;
-      //     d3.selectAll(q)
-      //       .style("stroke-opacity", 0.2);
-      //   });
-      // });
+    // selComps.forEach(src => {
+    //   selComps.forEach(c => {
+    //     var q = ".bundle-link-" + src.id + "-" + c.id;
+    //     d3.selectAll(q)
+    //       .style("stroke-opacity", 0.2);
+    //   });
+    // });
 
-    })
-    .on("mouseout", function(d){
-      d.tmpSel
-        .style("font-weight", null)
-        .style("font-size", d => wordScale(d.values.length))
-        .style("fill", null);
+  })
+  .on("mouseout", function(d){
+    d.tmpSel
+      .style("font-weight", null)
+      .style("font-size", d => wordScale(d.values.length))
+      .style("fill", null);
 
-      // d3.selectAll(".bd")
-      //   .style("stroke-opacity", linkOpacity);
-    });
-  };
+    // d3.selectAll(".bd")
+    //   .style("stroke-opacity", linkOpacity);
+  });
 }
 
 var o = d3.scaleOrdinal()
@@ -165,6 +248,12 @@ var groupPath = function(nodes) {
 };
 
 function create(diigo) {
+  var graph = makeGraph(diigo);
+  var foci = fociLayout()
+                .nodes(graph.nodes)
+                .links(graph.edges)
+                .size([width * is, height * is])
+                .start();
   d3.select(".node-map")
     .style("width", width - 25 + "px")
     .style("height", height - 25 + "px");
@@ -175,17 +264,13 @@ function create(diigo) {
               .append("g")
               .attr("overflow", "hidden");
 
-  var foci = fociLayout()
-                .sets(diigo)
-                .size([width * is, height * is])
-                .start();
 
 
   var cont = d3.select(".node-map");
 
 
-  cont.append("div")
-      .attr("class", "tipsy")
+  // cont.append("div")
+  //     .attr("class", "tipsy")
   cont.append("div")
     .attr("id", "tooltip")
     .attr("class", "tnt_tooltip");
@@ -227,7 +312,7 @@ function update(foci) {
   var cont = d3.select(".node-map"),
   svg = cont.select("svg g"),
   hullLabelCont = d3.select(".hull-labels"),
-  bubbleCont = svg.select(".bubble-cont"),
+  // bubbleCont = svg.select(".bubble-cont"),
   backdropCont = svg.select(".backdrop-cont"),
   tooltip = d3.select("#tooltip");
 
@@ -235,44 +320,14 @@ function update(foci) {
   d3.selectAll(".bubble").remove();
   d3.selectAll(".bd").remove();
 
-  var zoomHandler = d3.zoom()
-     // .extent([width * is, height * is])
-     .scaleExtent([-100, 40])
-     .on("zoom", function() {
-        var translate = [d3.event.transform.x, d3.event.transform.y];
-        var scale = d3.event.transform.k;
-
-        svg
-          .transition(1000)
-          .attr("transform", "translate(" + translate  + ")scale(" + scale + ")");
-
-     });
-
+  var zh = zoomHandler(svg);
   svg
-    .call(zoomHandler)
+    .call(zh)
     .on("dblclick", null)
-    .on("wheel", function(d) {
+    .on("wheel", function() {
       console.log("d");
     });
 
-  var programmaticZoom = function() {
-    return function(self) {
-      var bbox = self.node().getBBox(),
-        dx = bbox.width,
-        dy = bbox.height,
-        x = (bbox.x + bbox.x + bbox.width) / 2,
-        y = (bbox.y + bbox.y + bbox.height) / 2,
-        scale = Math.max(-20,
-          Math.min(2.5, 1 / Math.max(dx / width, dy / height))),
-        translate = [width / 2 - scale * x,
-          height / 2 - scale * y];
-
-      zoomHandler.transform(svg,
-        d3.zoomIdentity
-        .translate(translate[0], translate[1])
-        .scale(scale));
-    };
-  };
 
 
   var nodes = extractNodes(foci);
@@ -295,7 +350,7 @@ function update(foci) {
       .alphaMin(0.7);
 
 
-  var wordScale = d3.scaleLinear()
+    wordScale
       .domain(d3.extent(nodes.nestedTags, d => d.values.length))
       .rangeRound([7, 60]);
 
@@ -324,7 +379,7 @@ function update(foci) {
     .data(d => d.sets.slice(0, 7))
     .enter()
     .append("tspan")
-    .call(styleTspan(wordScale));
+    .call(styleTspan);
 
   var hull = labelGEnter
       // .attr("class", "group")
@@ -428,8 +483,8 @@ function update(foci) {
     .attr("class", "dummy")
     .on("mouseover", d => {
 
-      var x = d3.event.clientX;
-      var y = d3.event.clientY - 15;
+      var x = d3.event.clientX + 3;
+      var y = d3.event.clientY - 12;
       d3.select("#tag-tooltip")
         .style("left", x + "px")
         .style("top", y + "px")
@@ -439,6 +494,8 @@ function update(foci) {
         .select(".tipsy-inner")
         .text(d.interSet.join(", "));
 
+        console.log("d", d);
+        plotLabelsLite(d.src.comp, d.interSet);
     })
     .on("click", function(d) {
       // console.log("src", d.source, "tgt", d.target);
@@ -669,29 +726,8 @@ function update(foci) {
             // var tp = d3.select(".label-cont-" + c.id);
             var sets = c.sets.filter(d => group.interTags.includes(d.key));
             console.log("sets", sets);
-            var tp = d3.selectAll(".textPath").filter(d => d.id === c.id);
-            console.log("compNode", compNode);
+            plotLabels(c, group, i, sets);
 
-            tp.selectAll("tspan").remove();
-            tp.selectAll("tspan")
-                        .data(sets, d => d.key)
-                        .enter()
-                        .append("tspan")
-                        .call(styleTspan(wordScale));
-
-            d3.selectAll(".doc")
-              .filter(d => c.nodes.map(e => e.id).includes(d.id))
-              .style("opacity", 0.01);
-
-            var ids = group.values.map(d => d.id);
-            d3.selectAll(".doc")
-              .filter(d => ids.includes(d.id))
-              .style("opacity", 1);
-
-            compNode.selectAll("g").select("path")
-              .style("opacity", 0.01);
-            compNode.selectAll(".bubble" + group.key + i).select("path")
-              .style("opacity", 1);
           })
           .on("mouseout", function() {
             d3.select(this).attr("opacity", 0.5);
@@ -706,7 +742,7 @@ function update(foci) {
                         .data(c.sets, d => d.key)
                         .enter()
                         .append("tspan")
-                        .call(styleTspan(wordScale));
+                        .call(styleTspan);
             // var tp = d3.select(".label-cont-" + c.id);
             // tp.selectAll("tspan").remove();
             // tp.selectAll("tspan")
@@ -737,7 +773,7 @@ function update(foci) {
         .style("opacity", 0)
         .on("click", function() {programmaticZoom()(d3.select(this));});
 
-    zoomHull.call(programmaticZoom());
+    zoomHull.call(programmaticZoom(zh, svg));
 
     });
 
