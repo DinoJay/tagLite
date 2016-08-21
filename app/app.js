@@ -214,10 +214,10 @@ var hullcurve = d3.line()
   .x(d => d.x)
   .y(d => d.y);
 
-var bundleLine = d3.line()
-            .x(d => d.x)
-            .y(d => d.y)
-            .curve(d3.curveBundle);
+// var bundleLine = d3.line()
+//             .x(d => d.x)
+//             .y(d => d.y)
+//             .curve(d3.curveBundle);
 
 var scale = 1;
 var width = window.innerWidth * scale;
@@ -338,13 +338,13 @@ function update(foci) {
   d3.selectAll(".bd").remove();
 
   var zh = zoomHandler(svg);
+
   svg
     .call(zh)
     .on("dblclick", null)
     .on("wheel", function() {
       console.log("d");
     });
-
 
 
   var nodes = extractNodes(foci);

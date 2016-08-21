@@ -103,8 +103,8 @@ function nodes(arg) {
 function d3cola(){
   if (this._d3cola) return this._d3cola;
   var colaLayout = cola.d3adaptor()
-  // .avoidOverlaps(true)
-      .size([200, 200]);
+    .avoidOverlaps(true)
+      .size([1400, 800]);
 
   this._d3cola = colaLayout
       .nodes([])
@@ -131,4 +131,4 @@ const graphLayout = function() {
   };
 };
 
-module.exports = graphLayout;
+export default graphLayout;

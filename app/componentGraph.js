@@ -17,7 +17,7 @@ function deriveSets(nodes) {
 
   var nested_data = d3.nest()
     .key(d => d.tag)
-    .entries(spread_data).filter(d => d.values.length > 0);
+    .entries(spread_data).filter(d => d.values.length > 1);
 
   var groups = nested_data.map(g => {
     g.id = g.key;
@@ -188,13 +188,23 @@ const computeComponents = function(ns, es, limit) {
     var interTags = _.intersection(compNodes.filter(d => d)
       .map(d => d.tags));
 
+    var sets = deriveSets(compNodes);
+
+    sets.forEach(s => {
+      s.values = s.values.map(n => {
+        var f = compNodes.find(m => m.id === n.id);
+        return f;
+      });
+    });
     return {
       id: id,
       values: g,
       tags: tags,
       nodes: compNodes,
+      width: compNodes.length * 2,
+      height: compNodes.length * 2,
       interTags: interTags,
-      sets: deriveSets(compNodes)
+      sets: sets
       // nodes: g
       };
   });
