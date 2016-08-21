@@ -196,11 +196,25 @@ const computeComponents = function(ns, es, limit) {
         return f;
       });
     });
+
+    var slinks = edges;
+    console.log("edges", slinks);
+
+    var sLinks = edges.reduce((acc, e) => {
+      var src = compNodes.findIndex(c => c.__setKey__ === e.source.__key__);
+      var tgt = compNodes.findIndex(c => c.__setKey__ === e.target.__key__);
+      if (src !== -1 && tgt !== -1) {
+        acc.push({source: src, target: tgt});
+      }
+      return acc;
+    }, []);
+    console.log("slinks", sLinks);
     return {
       id: id,
       values: g,
       tags: tags,
       nodes: compNodes,
+      links: sLinks,
       width: compNodes.length * 2,
       height: compNodes.length * 2,
       interTags: interTags,

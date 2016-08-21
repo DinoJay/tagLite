@@ -13,12 +13,12 @@ import * as d3 from "d3";
 //   .y(d => d.y);
 
 function draw_marching_squares(callback, groups, isolevel = 0.044,
-                                                          cell_size = 5) {
+                                                          cell_size = 4) {
   // var isolevel = 0.0250;
   var epsilon = 0.00000001;
   var grid = {
-    width: 2400,
-    height: 1600
+    width: 300,
+    height: 300
   };
 
   var set = []; //the current set for the bubble
