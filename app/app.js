@@ -2,9 +2,11 @@
 import * as d3 from "d3";
 import _ from "lodash";
 import fociLayout from "./foci";
+import colaLayout from "./colaFoci.js";
 import * as d3_force from "d3-force";
 import computeTagGraph from "./tagGraph.js";
 import computeCompGraph from "./componentGraph.js";
+// import computeCompGraph2 from "./componentGraph2.js";
 
 import marching_squares from "./marchingSquaresHelpers.js";
 import offsetInterpolate from "./polyOffset.js";
@@ -19,7 +21,8 @@ require("./style/style.less");
 function zoomHandler(svg) {
   return d3.zoom()
      .extent(function() {
-       var bbox = d3.select("#zoom-hull").node().getBBox();
+       var bbox = d3.select("#zoom-hull").node().getBoundingClientRect();
+       console.log("client rect");
        console.log("bbox", bbox);
        return [[bbox.x, bbox.y], [bbox.x + bbox.width, bbox.y + bbox.height]];
      })
@@ -216,9 +219,9 @@ var bundleLine = d3.line()
             .y(d => d.y)
             .curve(d3.curveBundle);
 
-var is = 2/2;
-var width = window.innerWidth;
-var height = 800;//window.innerHeight;
+var scale = 1;
+var width = window.innerWidth * scale;
+var height = 800 * scale;//window.innerHeight;
 
 var fill = (i) => d3.schemeCategory10[i];
 
@@ -227,7 +230,7 @@ var groupPath = function(nodes) {
   var offset = 5;
   nodes.forEach(function(element) {
     fakePoints = fakePoints.concat([
-      // "0.7071" is the sine and cosine of 45 degree for corner points.
+      // "0.7071" scale the sine and cosine of 45 degree for corner points.
       [(element.x), (element.y + offset)],
       [(element.x + (0.7071 * offset)),
         (element.y + (0.7071 * offset))],
@@ -250,21 +253,31 @@ var groupPath = function(nodes) {
 
 function create(diigo) {
   var graph = computeTagGraph(diigo);
-  var compGraph = computeCompGraph(graph.nodes, graph.edges, 4);
-  console.log("comp graph", compGraph);
+  var compGraph = computeCompGraph(graph.nodes, graph.edges, 2);
+
+
+  var cola = (new colaLayout)
+                .size([2000, 2000])
+                .nodes(compGraph.nodes)
+                .links(compGraph.edges)
+                //[30, 20, 70]
+                .iterations([30, 20, 33])
+                .start();
+  console.log("cola nodes", cola.nodes());
+  console.log("cola edges", cola.links());
 
   var foci = fociLayout()
                 .nodes(graph.nodes)
                 .links(graph.edges)
-                .size([width * is, height * is])
+                .size([width, height])
                 .start();
   d3.select(".node-map")
     .style("width", width - 25 + "px")
     .style("height", height - 25 + "px");
 
   var g = d3.select(".node-map").select("svg")
-              .attr("width", width * is)
-              .attr("height", height * is)
+              .attr("width", width * scale)
+              .attr("height", height * scale)
               .append("g")
               .attr("overflow", "hidden");
 
@@ -439,7 +452,7 @@ function update(foci) {
     .attr("width", d => d.width)
     .attr("height", d => d.height)
     .attr("class", "doc")
-    .on("click", function() {programmaticZoom(d3.select(this));})
+    .on("click", function() {programmaticZoom(zh, d3.select(this));})
     .on("mouseover", function(d) {
       console.log("d3 event", d3.event);
       var x = d3.event.clientX + 30;
@@ -773,8 +786,8 @@ function update(foci) {
         .attr("class", "hull")
         .attr("id", "zoom-hull")
         .attr("d", groupPath(nodes.docs))
-        // .style("fill", "gray")
-        .style("opacity", 0)
+        .attr("fill", "gray")
+        .style("opacity", 0.5)
         .on("click", function() {programmaticZoom()(d3.select(this));});
 
     zoomHull.call(programmaticZoom(zh, svg));

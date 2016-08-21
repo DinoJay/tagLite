@@ -227,24 +227,12 @@ function runForce() {
   newLinks = newLinks.concat(links.filter(l => !l.cut));
 
 
-  var simulation = d3.forceSimulation(nodes)
+  var simulation = d3.forceSimulation(nodes);
     // .force("charge", d3.forceManyBody())
-    .force("link", d3.forceLink()
-             .distance(l => l.cut ? 0 : 9)
-             .strength(l => {
-               // var maxLen = Math.min(l.source.outLinks.length,
-               //   l.target.outLinks.length);
-               // console.log("1/maxLen", 1/maxLen);
-               return l.cut ? 1 : 1;
-               // return 1;
-             }))
     // .force("position", d3_force.forcePosition());
-    .force("collide", d3.forceCollide((d) => d.dummy ? 25 : 7))
-    .force("intraCollide", collide(nodes))
-    .force("center", d3.forceCenter(...center));
     // .alphaMin(0.4);
 
-  simulation.force("link").links(newLinks);
+  // simulation.force("link").links(newLinks);
   simulation.stop();
 
   // TODO: dirty hack

@@ -151,24 +151,20 @@ var isCutEdge = (l, nodes, linkedByIndex, maxDepth) => {
   return l.level % maxDepth === 0 && targetDeg > 0;
 };
 
-const computeComponents = function(ns, es, limit) {
-  var nodes = _.cloneDeep(ns),
-      edges = _.cloneDeep(es);
+const computeComponents = function(nodes, edges, limit) {
 
   var linkedByIndex = {};
   edges.forEach(function(d) {
     linkedByIndex[d.source + "," + d.target] = d;
   });
 
-
-  edges.forEach(l => {
-    l.cut = isCutEdge(l, nodes, linkedByIndex, limit);
-  });
-
   var links = edges.map(e => {
     e.source = nodes[e.source];
     e.target = nodes[e.target];
     return e;
+  });
+  links.forEach(l => {
+    l.cut = isCutEdge(l, nodes, linkedByIndex, limit);
   });
 
   var reducedEdges = links.filter(l => !l.cut);
@@ -222,6 +218,7 @@ const computeComponents = function(ns, es, limit) {
       });
     });
   });
+  console.log("COMPLINKS", compLinks);
   return {nodes: comps, edges: compLinks};
 
 };

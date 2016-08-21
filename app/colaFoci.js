@@ -1,17 +1,16 @@
-var d3 = require("d3");
-var cola = require("webcola");
-var _ = require("lodash");
+import * as d3 from "d3";
+import cola from "webcola";
+import _ from "lodash";
 
 function runColaForce() {
-  // var center = this._size.map(d => d/2);
-
-  this.d3cola().start(this._iterations[0], this._iterations[1], this._iterations[2] + 5);
+  var d3cola = this.d3cola.bind(this);
+  d3cola().start(this._iterations[0], this._iterations[1], this._iterations[2] + 5);
   var n = d3.sum(this._iterations + 5);
   for (var i = 0; i < n; ++i) d3cola().tick();
 
   d3cola().stop();
 
-  this.d3cola().nodes().forEach(function(d) {
+  d3cola().nodes().forEach(function(d) {
     d.variable = null;
     d.cIn = null;
     d.cOut = null;
@@ -24,7 +23,7 @@ function runColaForce() {
     return d;
   });
 
-  this._links = this.d3cola().links().map(l => {
+  this._links = d3cola().links().map(l => {
     l.source = l.source.index;
     l.target = l.target.index;
     return l;
@@ -63,8 +62,9 @@ function links(arg) {
 function nodes(arg) {
   if (!arg) return this.d3cola().nodes();
   var nodes = arg;
+  var d3cola = this.d3cola.bind(this);
 
-  this.d3cola().nodes().forEach(n => n.endure = false);
+  d3cola().nodes().forEach(n => n.endure = false);
 
   nodes.forEach(d => {
     d.width = d.width || 10;
@@ -72,7 +72,7 @@ function nodes(arg) {
   });
 
   var newNodes = nodes.reduce((acc, d, i) => {
-    var oldNode = this.d3cola().nodes().find(n => n.id === d.id);
+    var oldNode = d3cola().nodes().find(n => n.id === d.id);
     if(oldNode) {
       oldNode.endure = true;
       oldNode.fixed = i % 2;
@@ -95,12 +95,12 @@ function nodes(arg) {
     return acc;
   }, []);
 
-  _.remove(this.d3cola().nodes(), n => !n.endure);
-  newNodes.forEach(n => this.d3cola().nodes().push(n));
+  _.remove(d3cola().nodes(), n => !n.endure);
+  newNodes.forEach(n => d3cola().nodes().push(n));
   return this;
 }
 
-const d3cola = () => {
+function d3cola(){
   if (this._d3cola) return this._d3cola;
   var colaLayout = cola.d3adaptor()
   // .avoidOverlaps(true)
@@ -113,7 +113,7 @@ const d3cola = () => {
       .symmetricDiffLinkLengths(7);
 
   return this._d3cola;
-};
+}
 
 const graphLayout = function() {
   return {
