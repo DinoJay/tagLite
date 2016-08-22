@@ -38,7 +38,6 @@ function simple_comp(nodes, links) {
     var edge = [l.source.index, l.target.index];
     return edge;
   });
-  // console.log("edgeList", edgeList);
 
   var adjlist = convert_edgelist_to_adjlist(vertices, edgeList);
   // console.log("adjList", adjlist, adjlist.length, "vertices", vertices,
@@ -173,7 +172,6 @@ const computeComponents = function(ns, es, limit) {
 
   var reducedEdges = links.filter(l => !l.cut);
   var cutEdges = links.filter(l => l.cut);
-  console.log("cutEdges", cutEdges);
 
   var comps = simple_comp(nodes, reducedEdges).map((g, i) => {
     var id = i + "comp";
@@ -197,10 +195,8 @@ const computeComponents = function(ns, es, limit) {
       });
     });
 
-    var slinks = edges;
-    console.log("edges", slinks);
 
-    var sLinks = edges.reduce((acc, e) => {
+    var nodeLinks = edges.reduce((acc, e) => {
       var src = compNodes.findIndex(c => c.__setKey__ === e.source.__key__);
       var tgt = compNodes.findIndex(c => c.__setKey__ === e.target.__key__);
       if (src !== -1 && tgt !== -1) {
@@ -208,13 +204,12 @@ const computeComponents = function(ns, es, limit) {
       }
       return acc;
     }, []);
-    console.log("slinks", sLinks);
     return {
       id: id,
       values: g,
       tags: tags,
       nodes: compNodes,
-      links: sLinks,
+      links: nodeLinks,
       width: compNodes.length * 2,
       height: compNodes.length * 2,
       interTags: interTags,
@@ -229,14 +224,13 @@ const computeComponents = function(ns, es, limit) {
     var tgt = d.target.index ? d.target.index : d.target;
     cutIndex[src + "," + tgt] = true;
   });
-  console.log("comps", comps, cutIndex);
+
   var compLinks = [];
   comps.forEach(src => {
     comps.forEach(tgt => {
       src.values.forEach(sn => {
         tgt.values.forEach(tn => {
           var str = sn.index + "," + tn.index;
-          // console.log("sn", sn, tn);
           if (cutIndex[str]) {
             compLinks.push({
               source: comps.findIndex(c => c.id === src.id),
@@ -246,6 +240,9 @@ const computeComponents = function(ns, es, limit) {
       });
     });
   });
+
+
+
   return {nodes: comps, edges: compLinks};
 
 };

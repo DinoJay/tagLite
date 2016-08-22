@@ -15,6 +15,35 @@ import brewer from "colorbrewer";
 var wordScale = d3.scaleLinear();
 
 require("./style/style.less");
+
+
+function linkPath(d) {
+  // Total difference in x and y from source to target
+  var diffX = d.target.x - d.source.x;
+  var diffY = d.target.y - d.source.y;
+
+  // Length of path from center of source node to center of target node
+  var pathLength = Math.sqrt((diffX * diffX) + (diffY * diffY));
+
+
+  var offsetXS = (diffX * d.source.r) / pathLength;
+  var offsetYS = (diffY * d.source.r) / pathLength;
+  // x and y distances from center to outside edge of target node
+  var offsetXT = (diffX * d.target.r) / pathLength;
+  var offsetYT = (diffY * d.target.r) / pathLength;
+
+  return "M" + (d.source.x + offsetXS) + "," + (d.source.y + offsetYS)
+  + "L" + (d.target.x - offsetXT) + "," + (d.target.y - offsetYT);
+}
+
+function labelArc(innerRadius, outerRadius) {
+  return d3.arc()
+           .innerRadius(innerRadius)
+           .outerRadius(outerRadius)
+           .startAngle(-Math.PI / 3)
+           .endAngle(2 *Math.PI)();
+}
+
 function pythag(r, b, coord, radius, w) {
     var hyp2 = Math.pow(radius, 2),
       strokeWidth = 2;
@@ -37,8 +66,6 @@ function zoomHandler(svg) {
   return d3.zoom()
      .extent(function() {
        var bbox = d3.select("#zoom-hull").node().getBoundingClientRect();
-       console.log("client rect");
-       console.log("bbox", bbox);
        return [[bbox.x, bbox.y], [bbox.x + bbox.width, bbox.y + bbox.height]];
      })
      .scaleExtent([-100, 40])
@@ -53,7 +80,6 @@ function zoomHandler(svg) {
 
 function programmaticZoom(zoomHandler, svg) {
   return function(self) {
-    console.log("self", self);
     var bbox = self.node().getBBox(),
       dx = bbox.width,
       dy = bbox.height,
@@ -72,13 +98,12 @@ function programmaticZoom(zoomHandler, svg) {
 }
 function programmaticZoomCircle(zoomHandler, svg) {
   return function(d) {
-    console.log("self", self);
-    var dx = d.width,
-      dy = d.width,
+    var offset = 50;
+    var dx = d.w + offset,
+      dy = d.w + offset,
       x = (d.x),
       y = (d.y) ,
-      scale = Math.max(-20,
-        Math.min(2.5, 1 / Math.max(dx / width, dy / height))),
+      scale = Math.max(-40, Math.min(8, 1 / Math.max(dx / width, dy / height))),
       translate = [width / 2 - scale * x,
         height / 2 - scale * y];
 
@@ -101,13 +126,13 @@ function programmaticZoomCircle(zoomHandler, svg) {
 function plotLabels(c, group, i, sets) {
   var tp = d3.selectAll(".textPath").filter(d => d.id === c.id),
       compNode = d3.select(".comp-" +c.id);
-  console.log("compNode", compNode);
 
   tp.selectAll("tspan").remove();
   tp.selectAll("tspan")
               .data(sets, d => d.key)
               .enter()
               .append("tspan")
+              //TODO: upd enter
               .call(styleTspan);
 
   d3.selectAll(".doc")
@@ -129,9 +154,7 @@ function plotLabelsLite(compId, sets) {
   // TODO: get the tspan objects of nbs
   var tp = d3.selectAll(".textPath").filter(d => d.id === compId),
       compNode = d3.select(".comp-" + compId).select("textpath");
-  console.log("compNode", compNode, tp);
   var ns = compNode.data()[0];
-  console.log("ns", ns);
   sets = ns.sets.filter(n => sets.includes(n.key));
   tp.selectAll("tspan").remove();
   tp.selectAll("tspan")
@@ -192,7 +215,6 @@ function extractNodes(foci) {
     return c;
   });
 
-  console.log("AppliedComps", appliedComps);
 
   var tags = extractTags(docNodes);
 
@@ -225,7 +247,7 @@ function styleTspan(self) {
     d.tmpSel = lc.selectAll("tspan").filter(e => e.key === d.key);
     d.tmpSel
       .style("font-weight", "bold")
-      .style("font-size", d => wordScale(d.values.length) + 10);
+      .style("font-size", d => wordScale(d.nodes.length) + 10);
       // .style("fill", "red");
 
     // selComps.forEach(src => {
@@ -295,11 +317,16 @@ var groupPath = function(nodes) {
 };
 
 function createSubGraph(c){
+  c.nodes.forEach(d => {
+    d.width = 3;
+    d.height = 4;
+  });
   var parData = d3.select(this.parentNode).data()[0];
   var w = parData.w;
   var h = parData.h;
   var compNode = d3.select(this);
   var bubbleCont = compNode.append("g");
+  console.log("c nodes", c.nodes);
 
   compNode
     .attr("width", w)
@@ -318,49 +345,59 @@ function createSubGraph(c){
 
   var linkMerge = linkEnter.merge(link);
 
-  var node = d3.select(this).selectAll(".node")
+  var doc = d3.select(this).selectAll(".doc")
     .data(c.nodes);
 
-  var nodeEnter = node.enter()
+  var docEnter = doc
+    .enter()
     .append("g")
-    .attr("class", "node");
+    .attr("class", "doc");
 
-  nodeEnter
-    .append("circle")
-    .attr("rx", 0.05)
-    .attr("r", 2)
-    .attr("ry", 0.05)
-    .attr("stroke", "black")
-    .attr("stroke-width", 1);
+  docEnter.append("rect")
+      .attr("rx", 0.5)
+      .attr("ry", 0.5)
+      // .attr("stroke", "black")
+      // .attr("stroke-width", 0.3)
+      .attr("fill",  "white")
+      // .attr("opacity",  0)
+      .attr("width", d => d.width)
+      .attr("height", d => d.height);
+      // .on("click", zoomDoc);
 
-  nodeEnter.append("title")
+  docEnter.append("image")
+    .attr("xlink:href", "icon-file.png")
+    .attr("width", d => d.width + "px")
+    .attr("height", d => d.height + "px");
+
+  docEnter.append("title")
       .text(d => d.title);
 
-  var nodeMerge = nodeEnter.merge(node);
+  var docMerge = docEnter.merge(doc);
 
   var subSim = d3.forceSimulation(c.nodes)
       .force("link", d3.forceLink(c.links)
-                       .strength(0.01)
-                         .distance(10)
+                       .strength(0.1)
+                         .distance(8)
       )
-    .force("charge",
-      d3.forceManyBody()
-      .distanceMin(5)
-      .strength(-0.5)
-      // .distanceMax(200)
-      )
+    // .force("charge",
+    //   d3.forceManyBody()
+    //   .distanceMin(5)
+    //   .strength(-0.5)
+    //   // .distanceMax(200)
+    //   )
     .force("center", d3.forceCenter(w/2, h/2))
+    .force("collide", d3.forceCollide(8).strength(1))
     .alphaMin(0.6);
 
   subSim.on("tick", function() {
       // TODO: fix later
-      nodeMerge.each(d => {
+      docMerge.each(d => {
         d.x = pythag(2, d.y, d.x, w/2, w);
         d.y = pythag(2, d.x, d.y, h/2, w);
       });
-      nodeMerge
+      docMerge
         .attr("transform", d => {
-          return "translate(" + [d.x, d.y] + ")";
+          return "translate(" + [d.x - d.width / 2, d.y - d.height / 2] + ")";
         });
 
     linkMerge
@@ -405,6 +442,7 @@ function createSubGraph(c){
 
     }, c.sets, 0.024); // bigger: 0.0048, 0.024 (with updated bubble points)
 
+    c.subSim = subSim;
   });
 
 
@@ -413,9 +451,13 @@ function createSubGraph(c){
 }
 
 
-function create(diigo) {
-  var graph = computeTagGraph(diigo);
-  var compGraph = computeCompGraph(graph.nodes, graph.edges, 3);
+function create(graph) {
+  console.log("graph", graph);
+
+  wordScale
+    .domain(d3.extent(graph.tags, d => d.values.length))
+    .rangeRound([7, 40]);
+  var compGraph = computeCompGraph(graph.nodes, graph.edges, 4);
 
 
   var cola = (new colaLayout)
@@ -423,10 +465,8 @@ function create(diigo) {
                 .nodes(compGraph.nodes)
                 .links(compGraph.edges)
                 //[30, 20, 70]
-                .iterations([30, 30, 30])
+                .iterations([10, 10, 10])
                 .start();
-  console.log("cola nodes", cola.nodes());
-  console.log("cola edges", cola.links());
 
   d3.select(".node-map")
     .style("width", width - 25 + "px")
@@ -464,40 +504,62 @@ function create(diigo) {
 
   var defs = svg.append("defs");
 
-  // defs.selectAll("marker")
-  //     .data(["end"])      // Different link/path types can be defined here
-  //   .enter().append("svg:marker")    // This section adds in the arrows
-  //     .attr("id", String)
-  //     .attr("viewBox", "0 -5 10 10")
-  //     .attr("refX", 10)
-  //     .attr("refY", 0)
-  //     .attr("markerWidth", 5)
-  //     .attr("markerHeight", 5)
-  //     .attr("orient", "auto")
-  //   .append("svg:path")
-  //     .attr("d", "M0,-5L10,0L0,5")
-  //     .attr("class", "marker");
 
   defs.append("marker")
     .attr("id", "end-arrow")
     .attr("viewBox", "0 0 10 10")
-    .attr("refX", 4 + 18)
+    .attr("refX", 4)
     .attr("refY", 5)
     .attr("orient", "auto")
   .append("path")
     .attr("d", "M0,0 L0,10 L10,5 z");
-  update(cola);
+
+  defs.selectAll("marker")
+      .data(["end"])      // Different link/path types can be defined here
+    .enter().append("svg:marker")    // This section adds in the arrows
+      .attr("id", String)
+      .attr("viewBox", "0 -5 10 10")
+      .attr("refX", 10)
+      .attr("refY", 0)
+      .attr("markerWidth", 15)
+      .attr("markerHeight", 15)
+      .attr("orient", "auto")
+    .append("svg:path")
+      .attr("d", "M0,-5L10,0L0,5")
+      .attr("class", "marker");
+
+  var simulation = d3.forceSimulation(cola.nodes())
+      .force("link", d3.forceLink(cola.links())
+                       .strength(0)
+                         // .distance(0)
+      )
+      // .force("charge", d3_force.forceManyBody()
+      //                    .strength(- 2)
+      //                    // .distanceMin(9)
+      //                    // .distanceMax(200)
+      // )
+      .force("x", d3.forceX(d => d.pos.x)
+        .strength(0.2)
+      )
+      .force("y", d3.forceY(d => d.pos.y)
+        .strength(0.2)
+      )
+      .force("collide", d3.forceCollide(d => d.r).strength(1))
+      .alphaMin(0.3);
+
+  update(simulation);
 }
 
 
 
-function update(cola) {
+function update(simulation) {
+  // simulation.restart();
 
   var cont = d3.select(".node-map"),
   svg = cont.select("svg g"),
   hullLabelCont = d3.select(".hull-labels"),
   // bubbleCont = svg.select(".bubble-cont"),
-  backdropCont = svg.select(".backdrop-cont"),
+  // backdropCont = svg.select(".backdrop-cont"),
   tooltip = d3.select("#tooltip");
 
   hullLabelCont.selectAll("*").remove();
@@ -514,25 +576,8 @@ function update(cola) {
     });
 
 
-  var simulation = d3.forceSimulation(cola.nodes())
-      // .force("charge", d3_force.forceManyBody()
-      //                    .strength(- 2)
-      //                    // .distanceMin(9)
-      //                    // .distanceMax(200)
-      // )
-      .force("x", d3.forceX(d => d.pos.x)
-        .strength(1)
-      )
-      .force("y", d3.forceY(d => d.pos.y)
-        .strength(1)
-      )
-      .force("collide", d3.forceCollide(d => d.r).strength(1))
-      .alphaMin(0.7);
 
 
-    // wordScale
-    //   .domain(d3.extent(nodes.nestedTags, d => d.values.length))
-    //   .rangeRound([7, 60]);
 
   // var labelG = hullLabelCont
   //     .selectAll("g")
@@ -607,38 +652,95 @@ function update(cola) {
   //     .attr("fill",  "none");
 
   var link = svg.selectAll(".link")
-    .data(cola.links(), d => d.source.id + d.target.id);
+    .data(simulation.force("link").links(), d => d.source.id + d.target.id);
 
   // TODO: where are the labels?
   var linkEnter = link
     .enter()
-    .append("line")
-    .attr("class", "link")
-    .attr("marker-end", "url(#end)");
+    .append("path")
+    .attr("class", "link");
 
   var linkMerge = linkEnter.merge(link);
-  var comp = svg.selectAll(".comp").data(cola.nodes(), d => d.id);
+  var comp = svg.selectAll(".comp").data(simulation.nodes().filter(d => !d.dummy),
+    d => d.id);
 
-  var compEnter = comp
+  var compEnterG = comp
     .enter()
     .append("g")
     .attr("class", "comp")
     .attr("width", d => d.w)
     .attr("height", d => d.h);
 
+  compEnterG.append("circle");
 
-  compEnter.append("circle");
+  var radOffset = 3;
+  compEnterG
+    .append("path")
+    .attr("d", d => labelArc(d.r, d.r + radOffset))
+    .attr("fill", "none")
+    .attr("id", d => "circle" + d.id);
 
-  var compMerge = compEnter.merge(comp);
+
+  var compMerge = compEnterG.merge(comp);
 
   compMerge.select("circle")
       .attr("r", d => d.r)
-        .on("click", function(d){ programmaticZoomCircle(zh, svg)(d);});
+      .on("click", function(d){
+        programmaticZoomCircle(zh, svg)(d);
+        d.r = d.r + 30;
+        // d3.select(this).attr("r", d.r);
 
-  compEnter
+      simulation.force("collide", d3.forceCollide(d => d.r).strength(1));
+
+
+        simulation
+         .alpha(1)
+         .restart();
+
+          update(simulation);
+      });
+
+  compEnterG
     .append("g")
     .attr("class", "node-cont")
     .each(createSubGraph);
+
+
+  var textPath = compEnterG
+    .append("g")
+    .attr("class", "label-cont")
+    .append("text")
+    .attr("overflow", "hidden")
+    .append("textPath")
+    .attr("overflow", "hidden")
+      // .attr("class", d => "label-cont-" + d.id + " textPath")
+     // .attr("startOffset","-100")
+      // .style("text-anchor","middle")
+      .attr("xlink:href", d => "#circle" + d.id);
+
+  textPath.selectAll("tspan")
+    .data(d => d.sets.slice(0, 4))
+    .enter()
+    .append("tspan")
+    .call(styleTspan);
+
+
+  // var tl = textPath.node().getComputedTextLength();
+  // textPath
+  //   .attr("textLength", tl);
+
+  var dummyData = simulation.nodes().filter(d => d.dummy);
+  var dummy = svg.selectAll(".dummy").data(dummyData, d => d.id);
+
+  var dummyEnter = dummy
+    .enter()
+    .append("g")
+    .attr("class", "dummy")
+    .append("circle")
+    .attr("r", d => d.r)
+    .attr("marker-end", "url(#end)");
+
+  var dummyMerge = dummyEnter.merge(dummy);
 
 
   simulation.on("tick", function() {
@@ -647,16 +749,23 @@ function update(cola) {
     //   return !d.dummy ? groupPath(d.nodes) : null;
       // });
 
+    dummyMerge
+      .attr("transform", d => {
+        return "translate(" + [d.x, d.y] + ")";
+      });
+
     compMerge
       .attr("transform", d => {
         return "translate(" + [d.x, d.y] + ")";
       });
 
+    // linkMerge
+    //   .attr("x1", l => l.source.x)
+    //   .attr("y1", l => l.source.y + l.source.r)
+    //   .attr("x2", l => l.target.x)
     linkMerge
-      .attr("x1", l => l.source.x)
-      .attr("y1", l => l.source.y)
-      .attr("x2", l => l.target.x )
-      .attr("y2", l => l.target.y);
+      .attr("d", linkPath);
+
 
     // dummyMerge
     //   .attr("transform", d => {
@@ -667,7 +776,7 @@ function update(cola) {
   // var comp = svg.selectAll(".comp")
   //   .data(simulation.nodes());
 
-  // var compEnter = comp
+  // var compEnterG = comp
   //   .enter()
   //   .append("g")
   //   .attr("width", d => d.width)
@@ -677,7 +786,7 @@ function update(cola) {
   //   .attr("fill", "brown")
   //   .attr("r", d => d.width);
   //
-  // var compMerge = compEnter.merge(comp);
+  // var compMerge = compEnterG.merge(comp);
 
   // var doc = svg.selectAll(".doc")
   //   .data(nodes.docs, d => d.id);
@@ -869,7 +978,7 @@ function update(cola) {
         .insert("path", ":first-child")
         .attr("class", "hull")
         .attr("id", "zoom-hull")
-        .attr("d", groupPath(cola.nodes()))
+        .attr("d", groupPath(simulation.nodes().filter(d => !d.dummy)))
           .attr("fill", "none");
         // .style("opacity", 0.5)
         // .on("click", function() {programmaticZoom(zh, svg);});
@@ -883,10 +992,11 @@ function update(cola) {
 }
 
 d3.json("diigo.json", function(error, data) {
-  var diigo = data.slice(0, 300).map((d, i) => {
+  var diigo = data.slice(0, 200).map((d, i) => {
     d.tags = d.tags.split(",");
     d.id = i;
     return d;
   });
-  create(diigo);
+  var graph = computeTagGraph(diigo);
+  create(graph);
 });

@@ -13,7 +13,7 @@ function runColaForce() {
       .nodes(this._nodes)
       .links(this._links)
       // .jaccardLinkLengths(40,0.7)
-      .flowLayout("y", 100);
+        .flowLayout("y", 50);
       // .symmetricDiffLinkLengths(7);
 
 
@@ -37,8 +37,8 @@ function runColaForce() {
         cy: d.y - d.h / 2
     };
     // TODO: fix
-    d.x = size[0] / 2/3;
-    d.y = size[1] * 2/3;
+    d.x = size[0] * 1/3;
+    d.y = size[1] * 1/3;
 
     return d;
   });
@@ -72,7 +72,34 @@ function start() {
 function links(arg) {
   if (!arg) return this._links;
 
-  this._links = arg;
+  var links = arg;
+  var nodes = this._nodes;
+  var cc = nodes.length;
+
+  var newLinks = [];
+  links.forEach(link => {
+      var s = link.source = nodes[link.source],
+          t = link.target = nodes[link.target],
+          dummy = {
+            "__key__": s.id + t.id + "dummy",
+            dummy: true,
+            interSet: link.interSet,
+            src: s,
+            tgt: t,
+            r: 10,
+            width: 15,
+            height: 15,
+            w: 10,
+            h: 10
+          }; // intermediate
+      nodes.push(dummy);
+      newLinks.push({source: link.source, target: cc, cut: link.cut,
+        outLinks: s.outLinks},
+        {source: cc, target: link.target, cut: link.cut, outLinks: t.outLinks});
+      cc += 1;
+  });
+  this._links = newLinks;
+
   return this;
 }
 

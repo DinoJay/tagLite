@@ -295,10 +295,10 @@ function draw_marching_squares(callback, groups, isolevel = 0.044,
     }
 
    //or just take the evens to approximate the bubble
-    sortedBubblePoints = sortedBubblePoints
-      .filter(function(x,i){
-      return (i%2 === 0);
-    });
+    // sortedBubblePoints = sortedBubblePoints
+    //   .filter(function(x,i){
+    //   return (i%2 === 0);
+    // });
 
     return sortedBubblePoints;
   }

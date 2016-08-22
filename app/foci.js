@@ -210,11 +210,13 @@ function runForce() {
     if (link.cut) {
       var s = link.source = nodes[link.source],
           t = link.target = nodes[link.target],
-          dummy = {"__key__": s.__key__ + t.__key__ + "dummy",
+          dummy = {
+            "__key__": s.__key__ + t.__key__ + "dummy",
             dummy: true,
             interSet: link.interSet,
             src: s,
-            tgt: t
+            tgt: t,
+            r: 30
           }; // intermediate
       nodes.push(dummy);
       newLinks.push({source: link.source, target: cc, cut: link.cut,

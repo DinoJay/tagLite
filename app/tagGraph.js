@@ -297,12 +297,25 @@ function prepareGraph(setData) {
       }
 
       newNodes = _.sortBy(newNodes, d => d.index);
-      // console.log("G nodes", newNodes);
+      console.log("G nodes", newNodes);
 
+      var spreadNodes = _.flattenDeep(newNodes.map(d => d.nodes.map(n => {
+        return n.tags.map(t => {
+          var copy = _.clone(n);
+          copy.key = t;
+          return copy;
+        });
+      })));
+
+      var allTags = d3.nest()
+        .key(d => d.key)
+        .entries(spreadNodes)
+        .sort((a, b) => d3.descending(a.values.length, b.values.length));
       return {
         nodes: newNodes,
         edges: edges,
-        linkedByIndex: linkedByIndex
+        linkedByIndex: linkedByIndex,
+        tags: allTags
       };
     }
 }
