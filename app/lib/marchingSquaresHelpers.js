@@ -13,12 +13,12 @@ import * as d3 from "d3";
 //   .y(d => d.y);
 
 function draw_marching_squares(callback, groups, isolevel = 0.044,
-                               cell_size = 4, w=300) {
+                               cell_size = 4, rad=300) {
   // var isolevel = 0.0250;
   var epsilon = 0.00000001;
   var grid = {
-    width: w,
-    height: w
+    width: rad,
+    height: rad
   };
 
   var set = []; //the current set for the bubble
@@ -170,10 +170,11 @@ function draw_marching_squares(callback, groups, isolevel = 0.044,
   var tetrisOpacityRange = [minTestrisOpacity, maxTestrisOpacity];
     var groupedPoints = [];
 
-  groups.every(g => {
-    if (g.values.length > 5) {
-      console.log("every");
-      set = g.values; //graph.nodes.filter(function(x){return x.group==g;});
+  groups.forEach(g => {
+    // if (g.values.length === 0) return false;
+
+    set = g.values; //graph.nodes.filter(function(x){return x.group==g;});
+    if (set.length > 1) {
       // console.log("marching_squares g.set", g.set);
 
       bubblePoints = [];
@@ -197,18 +198,18 @@ function draw_marching_squares(callback, groups, isolevel = 0.044,
             // }
 
             for (var k = 0; k < segments.length; k++ ) {
-              bubblePoints.push({
-                x: segments[k].b.x,
-                y: segments[k].b.y,
-                id: "i"+i+"j"+j+"k"+k+"g"+g.key,
-                group: g.key
-              });
-              bubblePoints.push({
-                x: segments[k].a.x,
-                y: segments[k].a.y,
-                id: "i"+i+"j"+j+"k"+k+"g"+g.key,
-                group: g.key
-              });
+               bubblePoints.push({
+                 x: segments[k].b.x,
+                 y: segments[k].b.y,
+                 id: "i"+i+"j"+j+"k"+k+"g"+g.key,
+                 group: g.key
+               });
+               bubblePoints.push({
+                 x: segments[k].a.x,
+                 y: segments[k].a.y,
+                 id: "i"+i+"j"+j+"k"+k+"g"+g.key,
+                 group: g.key
+               });
             }
           } //if(cell)
           else {
@@ -296,10 +297,10 @@ function draw_marching_squares(callback, groups, isolevel = 0.044,
     }
 
    //or just take the evens to approximate the bubble
-    // sortedBubblePoints = sortedBubblePoints
-    //   .filter(function(x,i){
-    //   return (i%2 === 0);
-    // });
+    sortedBubblePoints = sortedBubblePoints
+      .filter(function(x,i){
+      return (i%2 === 0);
+    });
 
     return sortedBubblePoints;
   }

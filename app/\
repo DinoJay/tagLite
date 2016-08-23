@@ -25,20 +25,15 @@ var DUMMYNODE_SIZE = 50;
 
 require("./style/style.less");
 
-const DOC_WIDTH = 4;
-const DOC_HEIGHT = 6;
-
-const bubbleScale = d3.scaleLinear()
-                          .domain([1, 100])
-                          .range([0.035, 0.14]);
-
+const DOC_WIDTH = 2;
+const DOC_HEIGHT = 3;
 
 const CORE_Class = ".core.view";
 
 
 function growCompBubble(c, sim) {
  // programmaticZoomCircle(zh, svg)(d);
-  c.r *= 1.5;
+  c.r += 200;
 
   sim
     .force("collide", d3.forceCollide(d => d.r).strength(1))
@@ -46,8 +41,8 @@ function growCompBubble(c, sim) {
     .restart();
 
   c.nodes.forEach(d => {
-    d.width *= 2;
-    d.height *= 2;
+    d.width += 10;
+    d.height += 10;
    });
 
   c.subSim
@@ -135,8 +130,8 @@ function programmaticZoom(zoomHandler, svg) {
 
   zoomHandler.transform(svg,
    d3.zoomIdentity
-    .translate(translate[0], translate[1])
-    .scale(scale));
+   .translate(translate[0], translate[1])
+   .scale(scale));
  };
 }
 
@@ -327,12 +322,10 @@ var groupPath = function(nodes) {
 function createSubGraph(c) {
  var compNode = d3.select(this);
  var bubbleCont = compNode.select(".bc").empty() ? compNode.append("g").attr("class", "bc") : compNode.select(".bc");
-
- console.log("c", c);
  compNode
-  // .attr("width", c.r * 2)
-  // .attr("height", c.r * 2)
-  .attr("transform", "translate(" + [-c.r, -c.r] + ")");
+ .attr("width", c.r * 2)
+ .attr("height", c.r * 2)
+  .attr("transform", "translate(" + [-c.r*2, -c.r*2] + ")");
 
  var link = compNode.selectAll(".subLink")
   .data(c.links);
@@ -381,11 +374,11 @@ function createSubGraph(c) {
 
  var subSim = d3.forceSimulation(c.nodes)
   .force("link", d3.forceLink(c.links)
-   .strength(0.06)
+   .strength(0.1)
    .distance(8)
   )
   .force("center", d3.forceCenter(c.r, c.r))
-  .force("collide", d3.forceCollide(d => d.width * 2).strength(1))
+  .force("collide", d3.forceCollide(8).strength(1))
   .alphaMin(0.6);
 
  subSim.on("tick", function() {
@@ -440,7 +433,7 @@ function createSubGraph(c) {
    bubble.exit().remove();
    bubbleGroup.exit().remove();
 
-  }, c.sets, 0.014, 4, c.r * 2); // bigger: 0.0048, 0.024 (with updated bubble points)
+  }, c.sets, 0.035, 4, c.r * 2); // bigger: 0.0048, 0.024 (with updated bubble points)
 
   c.subSim = subSim;
  });
@@ -467,7 +460,7 @@ function createCoreView(graph) {
  // var ext = d3.extent(compGraph.nodes.map(d => d.nodes.length));
  circleSize = d3.scaleLinear()
   .domain([1, 100])
-  .rangeRound([30, 100]);
+  .rangeRound([25, 100]);
 
  compGraph.nodes.forEach(n => n.r = circleSize(n.nodes.length));
  console.log("compGraph", compGraph.nodes);
@@ -475,7 +468,7 @@ function createCoreView(graph) {
  var cola = (new colaLayout)
   .size([width, height])
   .offset(LABEL_OFFSET)
-  .dummyRad(5)
+  .dummyRad(15)
   .nodes(compGraph.nodes)
   .links(compGraph.edges)
   //[30, 20, 70]
@@ -544,7 +537,7 @@ function createCoreView(graph) {
 
  var simulation = d3.forceSimulation(cola.nodes())
   .force("link", d3.forceLink(cola.links())
-   .strength(0)
+   .strength(1)
    .distance(80)
   )
   // .force("charge", d3_force.forceManyBody()
@@ -569,14 +562,15 @@ function createCoreView(graph) {
 function updateCoreView(simulation) {
  // simulation.restart();
  var cont = d3.select(CORE_Class),
-  svg = cont.select("svg g");
+  svg = cont.select("svg g"),
+  hullLabelCont = d3.select(".hull-labels"),
   // bubbleCont = svg.select(".bubble-cont"),
   // backdropCont = svg.select(".backdrop-cont"),
-  // tooltip = d3.select("#tooltip");
+  tooltip = d3.select("#tooltip");
 
-//  hullLabelCont.selectAll("*").remove();
-//  d3.selectAll(".bubble").remove();
-//  d3.selectAll(".bd").remove();
+ hullLabelCont.selectAll("*").remove();
+ d3.selectAll(".bubble").remove();
+ d3.selectAll(".bd").remove();
 
  var zh = zoomHandler(svg);
 
@@ -602,6 +596,25 @@ function updateCoreView(simulation) {
 
  var dummyMerge = dummyEnter.merge(dummy);
 
+ dummyMerge.select("circle")
+  .on("click", function(d) {
+   // programmaticZoomCircle(zh, svg)(d);
+   d.r = d.r + 30;
+   // d3.select(this).attr("r", d.r);
+
+   simulation
+    .alpha(1)
+    .restart();
+   d.nodes.forEach(d => {
+    d.width += 200;
+    d.height += 200;
+   });
+   d.subSim.alpha(1).restart();
+   console.log("click", d);
+
+   updateCoreView(simulation);
+  });
+
  dummy.exit().remove();
 
  var link = svg.selectAll(".link")
@@ -620,7 +633,9 @@ function updateCoreView(simulation) {
  var compEnter = comp
   .enter()
   .append("g")
-  .attr("class", "comp");
+  .attr("class", "comp")
+  .attr("width", d => d.r * 2)
+  .attr("height", d => d.r * 2);
 
  compEnter.append("circle")
   .attr("fill", "white");
@@ -632,11 +647,6 @@ function updateCoreView(simulation) {
   .attr("id", d => "circle" + d.id);
 
  var compMerge = compEnter.merge(comp);
-
-//  compMerge
-//   .attr("width", d => d.r * 2)
-//   .attr("height", d => d.r * 2);
-
  compMerge.select("path").attr("d", d => labelArc(d.r, d.r + radOffset));
 
  compMerge.select("circle")
@@ -653,7 +663,12 @@ function updateCoreView(simulation) {
   .append("g")
   .attr("class", "label-cont")
   .append("text")
+  .attr("overflow", "hidden")
   .append("textPath")
+  .attr("overflow", "hidden")
+  // .attr("class", d => "label-cont-" + d.id + " textPath")
+  // .attr("startOffset","-100")
+  // .style("text-anchor","middle")
   .attr("xlink:href", d => "#circle" + d.id);
 
  textPath.selectAll("tspan")
@@ -662,6 +677,7 @@ function updateCoreView(simulation) {
   .append("tspan")
   .call(styleTspan);
 
+
  // var tl = textPath.node().getComputedTextLength();
  // textPath
  //   .attr("textLength", tl);
@@ -669,6 +685,10 @@ function updateCoreView(simulation) {
 
 
  simulation.on("tick", function() {
+
+  // hull.attr("d", d => {
+  //   return !d.dummy ? groupPath(d.nodes) : null;
+  // });
 
   dummyMerge
    .attr("transform", d => {
@@ -680,10 +700,135 @@ function updateCoreView(simulation) {
     return "translate(" + [d.x, d.y] + ")";
    });
 
+  // linkMerge
+  //   .attr("x1", l => l.source.x)
+  //   .attr("y1", l => l.source.y + l.source.r)
+  //   .attr("x2", l => l.target.x)
   linkMerge
    .attr("d", linkPath);
 
+
+  // dummyMerge
+  //   .attr("transform", d => {
+  //     return "translate(" + [d.x, d.y] + ")";
+  //   });
+
  });
+ // var comp = svg.selectAll(".comp")
+ //   .data(simulation.nodes());
+
+ // var compEnter = comp
+ //   .enter()
+ //   .append("g")
+ //   .attr("width", d => d.width)
+ //   .attr("height", d => d.height)
+ //   .attr("class", "doc")
+ //   .append("circle")
+ //   .attr("fill", "brown")
+ //   .attr("r", d => d.width);
+ //
+ // var compMerge = compEnter.merge(comp);
+
+ // var doc = svg.selectAll(".doc")
+ //   .data(nodes.docs, d => d.id);
+ //
+ // var docEnter = doc
+ //   .enter()
+ //   .append("g")
+ //   .attr("width", d => d.width)
+ //   .attr("height", d => d.height)
+ //   .attr("class", "doc")
+ //   .on("click", function() {programmaticZoom(zh, d3.select(this));})
+ //   .on("mouseover", function(d) {
+ //     console.log("d3 event", d3.event);
+ //     var x = d3.event.clientX + 30;
+ //     var y = d3.event.clientY - 30;
+ //     tooltip
+ //       .style("left", x + "px")
+ //       .style("top", y + "px")
+ //       .style("opacity", 0.7);
+ //
+ //     var table = tooltip.append("table").append("tbody");
+ //
+ //     var tr0 = table.append("tr");
+ //     tr0.append("td").text("title");
+ //     tr0.append("td").text(d.title);
+ //
+ //     var tr1 = table.append("tr");
+ //     tr1.append("td").text("tags");
+ //     tr1.append("td").text(d.tags.join(","));
+ //
+ //     var tr2 = table.append("tr");
+ //     tr2.append("td").text("created_at");
+ //     tr2.append("td").text(d.created_at);
+ //
+ //
+ //     // var allTags = d3.nest()
+ //     //   .key(d => d.key)
+ //     //   .entries(spreadNodes)
+ //     // .sort((a, b) => d3.descending(a.values.length, b.values.length));
+ //
+ //   })
+ //   .on("mouseout", function() {
+ //     tooltip.style("opacity", 0);
+ //     tooltip.selectAll("*").remove();
+ //   });
+ //
+ // doc.exit().remove();
+
+
+ // var zoomDoc = function(d) {
+ //   zoomDetail(d);
+ //   var parent = d3.select(this.parentNode);
+ //
+ //   var rectBox = d3.select(this).node().getBoundingClientRect();
+ //
+ //   // var thumbForeign = parent
+ //   //     .append("foreignObject", ":first-child")
+ //   //     .attr("class", "frame-cont");
+ //   //       // .attr("transform", null)
+ //   //       // .attr("width", d => d.width)
+ //   //       // .attr("height", d => d.height);
+ //   //
+ //   // var thumbnail = thumbForeign.append("xhtml:div")
+ //   //       .attr("class", "thumbnail");
+ //   //       // .style("width", d => d.width + "px")
+ //   //       // .style("height", d => d.height + "px");
+ //   //
+ //   // thumbnail
+ //   //   // .append("foreignObject")
+ //   //   // .append("body")
+ //   //   // .attr("xmlns", "http://www.w3.org/1999/xhtml")
+ //   //   .append("iframe")
+ //   //   // .attr("class", "thu")
+ //   //   .attr("src", d => d.url)
+ //   //   .attr("scrolling", "no")
+ //   //   .style("width", rectBox.width * 4 + "px")
+ //   //   .style("height", rectBox.height * 4 + "px");
+ // };
+
+ // docEnter.append("rect")
+ //     .attr("rx", 0.5)
+ //     .attr("ry", 0.5)
+ //     // .attr("stroke", "black")
+ //     // .attr("stroke-width", 0.3)
+ //     .attr("fill",  "white")
+ //     // .attr("opacity",  0)
+ //     .attr("width", d => d.width)
+ //     .attr("height", d => d.height);
+ //     // .on("click", zoomDoc);
+ //
+ //
+ // docEnter.append("image")
+ //   .attr("xlink:href", "icon-file.png")
+ //   .attr("width", d => d.width + "px")
+ //   .attr("height", d => d.height + "px");
+ //   // .on("click", zoomDoc);
+
+ // docEnter.append("title")
+ //     .text(d => d.__setKey__);
+
+ // var docMerge = docEnter.merge(doc);
 
  simulation.on("end", function() {
   //   var flatLinks = foci._cutEdges.map(l => {
@@ -788,7 +933,7 @@ function updateCoreView(simulation) {
 }
 
 d3.json("diigo.json", function(error, data) {
- var diigo = data.slice(0, 200).map((d, i) => {
+ var diigo = data.slice(0, 100).map((d, i) => {
   d.tags = d.tags.split(",");
   d.id = i;
   return d;

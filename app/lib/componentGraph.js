@@ -4,6 +4,7 @@ import * as d3 from "d3";
 function deriveSets(nodes) {
   if (!nodes) return this._groups;
 
+  //TODO
   var realNodes = nodes.filter(d => !d.label);
 
   var spread_data = _.flatten(realNodes.map(n => {
@@ -17,7 +18,7 @@ function deriveSets(nodes) {
 
   var nested_data = d3.nest()
     .key(d => d.tag)
-    .entries(spread_data).filter(d => d.values.length > 1);
+    .entries(spread_data).filter(d => d.values.length > 0);
 
   var groups = nested_data.map(g => {
     g.id = g.key;
