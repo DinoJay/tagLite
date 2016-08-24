@@ -12,8 +12,8 @@ function runColaForce() {
   var d3cola = colaLayout
       .nodes(this._nodes)
       .links(this._links)
-      // .jaccardLinkLengths(40,0.7)
-      .flowLayout("y", 50)
+      .jaccardLinkLengths(40,0.7)
+      // .flowLayout("y", 50)
       .symmetricDiffLinkLengths(7);
 
 

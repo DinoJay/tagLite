@@ -12,9 +12,8 @@ import * as d3 from "d3";
 //   .x(d => d.x)
 //   .y(d => d.y);
 
-function draw_marching_squares(callback, groups, isolevel = 0.044,
-                               cell_size = 4, rad=300) {
-  // var isolevel = 0.0250;
+function draw_marching_squares(callback, groups, cell_size = 4, rad=300) {
+  // var isolevel = 0.0010;
   var epsilon = 0.00000001;
   var grid = {
     width: rad,
@@ -74,10 +73,11 @@ function draw_marching_squares(callback, groups, isolevel = 0.044,
     return p;
   }
 
-  function get_grid_cell(x, y) {
+  function get_grid_cell(x, y, isolevel) {
     var cell = {
       x: x,
       y: y,
+      isolevel,
       v: [
         {x: x, y: y},
         {x: x+cell_size, y: y},
@@ -123,16 +123,16 @@ function draw_marching_squares(callback, groups, isolevel = 0.044,
     ];
 
     if ( edge_table[index] & 1 ) {
-      vertlist[0] = vertex_interp(isolevel,cell.v[0], cell.v[1], cell.val[0], cell.val[1]);
+      vertlist[0] = vertex_interp(cell.isolevel,cell.v[0], cell.v[1], cell.val[0], cell.val[1]);
     }
     if ( edge_table[index] & 2 ) {
-      vertlist[1] = vertex_interp(isolevel,cell.v[1], cell.v[2], cell.val[1], cell.val[2]);
+      vertlist[1] = vertex_interp(cell.isolevel,cell.v[1], cell.v[2], cell.val[1], cell.val[2]);
     }
     if ( edge_table[index] & 4 ) {
-      vertlist[2] = vertex_interp(isolevel,cell.v[2], cell.v[3], cell.val[2], cell.val[3]);
+      vertlist[2] = vertex_interp(cell.isolevel,cell.v[2], cell.v[3], cell.val[2], cell.val[3]);
     }
     if ( edge_table[index] & 8 ) {
-      vertlist[3] = vertex_interp(isolevel,cell.v[3], cell.v[0], cell.val[3], cell.val[0]);
+      vertlist[3] = vertex_interp(cell.isolevel,cell.v[3], cell.v[0], cell.val[3], cell.val[0]);
     }
 
     var segments = [];
@@ -181,11 +181,11 @@ function draw_marching_squares(callback, groups, isolevel = 0.044,
       var tetriscells = [];
       for ( var i = 0; i < grid.width / cell_size; i += 1 ) {
         for ( var j = 0; j < grid.height / cell_size; j += 1 ) {
-          var cell = get_grid_cell(i*cell_size, j*cell_size);
+          var cell = get_grid_cell(i*cell_size, j*cell_size, g.isolevel);
 
           if (cell.status) {
             // TODO: set[i].isolevel
-            var segments = polygonize(cell, isolevel);
+            var segments = polygonize(cell, g.isolevel);
 
             // if(segments.length === 0) {
             //   console.log("segements", segments);
@@ -335,4 +335,3 @@ function draw_marching_squares(callback, groups, isolevel = 0.044,
 
 
 export default draw_marching_squares;
-

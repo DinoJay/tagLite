@@ -1,66 +1,6 @@
 import * as d3 from "d3";
 import _ from "lodash";
 
-function deepLinks(nodes, cutEdges) {
-  var dLinks = _.flattenDeep(cutEdges.map(e => {
-    var src, tgt;
-    if (e.source.nodes.length > e.target.nodes.length) {
-      src = e.source;
-      tgt = e.target;
-    }
-    else {
-      src = e.target;
-      tgt = e.source;
-    }
-    // TODO: check
-    if (src.comp === tgt.comp) return [];
-    var srcComp = nodes.comps.find(d => d.id === src.comp);
-    var tgtComp = nodes.comps.find(d => d.id === tgt.comp);
-    if (_.intersection(srcComp.sets.map(d => d.key),
-      tgtComp.sets.map(d => d.key)).length > 0) {
-      return srcComp.nodes.map(s => {
-        return tgtComp.nodes.reduce((acc, t)=> {
-          if (_.intersection(s.tags, t.tags).length > 0) {
-            acc.push({
-              source: nodes.docs.find(n => n.id === s.id).index,
-              target: nodes.docs.find(n => n.id === t.id).index
-            });
-          }
-          return acc;
-        }, []);
-      });
-    } else return [];
-  }));
-  return dLinks;
-}
-
-function aggrLinks(nodes) {
-  var docLinks = [];
-  nodes.docs.forEach(s => {
-    var srcComp = nodes.comps.find(d => d.id === s.comp);
-    if (srcComp === undefined) return;
-    var srcSets = srcComp.sets.map(d => d.key);
-    // var scomp = appliedComps.find(d => d.id === s.comp);
-    // var sCompTags = tags
-    nodes.docs.forEach(t => {
-    var tgtComp = nodes.comps.find(d => d.id === t.comp);
-    if (tgtComp === undefined) return;
-    var tgtSets = tgtComp.sets.map(d => d.key);
-      // var tcomp = appliedComps.find(d => d.id === s.comp);
-      if (s.comp !== t.comp && _.intersection(srcSets, tgtSets).length > 0) {
-      var filtered = docLinks.filter(l => l.source === s.index && l.target === t.index || l.source === t.index && l.target === s.index);
-        if (filtered.length === 0)
-        docLinks.push({
-            id: s.index + t.index,
-            source: s.index,
-            target: t.index
-        });
-      }
-    });
-  });
-  return _.uniqBy(docLinks, "id");
-}
-
 function rectCollide(nodes, strength) {
   return function(alpha) {
     var quadtree = d3.quadtree()
@@ -115,6 +55,33 @@ function rectCollide(nodes, strength) {
   };
 }
 
+function pythag(r, b, coord, radius, w) {
+ var hyp2 = Math.pow(radius, 2),
+  strokeWidth = 2;
+ // r += 1;
+
+ // force use of b coord that exists in circle to avoid sqrt(x<0)
+ b = Math.min(w - r - strokeWidth, Math.max(r + strokeWidth, b));
+
+ var b2 = Math.pow((b - radius), 2),
+  a = Math.sqrt(hyp2 - b2);
+
+ // radius - sqrt(hyp^2 - b^2) < coord < sqrt(hyp^2 - b^2) + radius
+ coord = Math.max(radius - a + r + strokeWidth,
+  Math.min(a + radius - r - strokeWidth, coord));
+
+ return coord;
+}
+
+function innerCircleCollide(nodes, r, pad) {
+  return function(alpha) {
+    for (var i = 0, n = nodes.length; i < n; ++i) {
+      var d = nodes[i];
+      d.x = pythag(pad, d.y, d.x, r, r * 2);
+      d.y = pythag(pad, d.x, d.y, r, r * 2);
+    }
+  };
+}
 
 var parseTime = d3.timeParse("%Y/%m/%d %H:%M:%S %Z");
-export {aggrLinks, deepLinks, parseTime, rectCollide};
+export {innerCircleCollide, parseTime, rectCollide};
