@@ -15,7 +15,7 @@ var timeCloud = timeCloudLayout();
 import marching_squares from "./lib/marchingSquaresHelpers.js";
 import offsetInterpolate from "./lib/polyOffset.js";
 
-import {innerCircleCollide} from "./lib/utils.js";
+import {cropText, innerCircleCollide} from "./lib/utils.js";
 import brewer from "colorbrewer";
 
 var wordScale = d3.scaleLinear();
@@ -34,11 +34,21 @@ const bubbleScale = d3.scaleLinear()
 
 
 const CORE_Class = ".core.view";
-
-
-function growCompBubble(c, sim) {
- // programmaticZoomCircle(zh, svg)(d);
-}
+// function wrap() {
+// // arc.getTotalLength()
+//         var self = d3.select(this),
+//             textLength = this.parentNode.getComputedTextLength(),
+//             text = self.text();
+//         while (textLength > ( 100 - 2 * 2) && text.length > 0) {
+//             text = text.slice(0, -1);
+//             self.text(text + "...");
+//             textLength = self.node().getComputedTextLength();
+//         }
+//     }
+//
+// function growCompBubble(c, sim) {
+//  // programmaticZoomCircle(zh, svg)(d);
+// }
 
 function linkPath(d) {
  // Total difference in x and y from source to target
@@ -58,12 +68,14 @@ function linkPath(d) {
  return "M" + (d.source.x + offsetXS) + "," + (d.source.y + offsetYS) + "L" + (d.target.x - offsetXT) + "," + (d.target.y - offsetYT);
 }
 
-function labelArc(innerRadius, outerRadius) {
- return d3.arc()
-  .innerRadius(innerRadius)
-  .outerRadius(outerRadius)
+
+function labelArc(radius) {
+  return d3.arc()
+  .innerRadius(0)
+  .outerRadius(radius)
   .startAngle(-Math.PI / 3)
   .endAngle(2 * Math.PI)();
+
 }
 
 
@@ -162,31 +174,6 @@ function plotLabels(c, group, i, sets) {
   .style("opacity", 1);
 }
 
-function plotLabelsLite(compId, sets) {
-  // TODO: get the tspan objects of nbs
-  var tp = d3.selectAll(".textPath").filter(d => d.id === compId),
-   compNode = d3.select(".comp-" + compId).select("textpath");
-  var ns = compNode.data()[0];
-  sets = ns.sets.filter(n => sets.includes(n.key));
-  tp.selectAll("tspan").remove();
-  tp.selectAll("tspan")
-   .data(sets, d => d.key)
-   .enter()
-   .append("tspan")
-   .call(styleTspan);
-
-  // d3.selectAll(".doc")
-  //   .filter(d => compNode.data().nodes.map(e => e.id).includes(d.id))
-  //   .style("opacity", 0.01);
- }
- // bigger scale :0.0048
- //
- // const linkOpacity = 0.05;
- // var dbg = d => {
- //   console.log("dbg", d);
- //   return d;
- // };
-
 function extractTags(docNodes) {
  var spreadNodes = _.flatten(docNodes.map(d => d.tags.map(t => {
   var copy = _.clone(d);
@@ -206,46 +193,32 @@ function extractTags(docNodes) {
 
 }
 
-function styleTspan(self) {
- self.attr("class", "tagLabel")
+function styleTspan(d) {
+  console.log("self", this);
+ d3.select(this).attr("class", "tagLabel")
   .attr("font-size", function(d) {
    return wordScale(d.values.length);
   })
   .text(d => d.key + " · ")
   .on("mouseover", function(d) {
-
-   var lc = d3.selectAll(".textPath")
-    .filter(e => e.tags.map(d => d.key).includes(d.key));
-   // var selComps = lc.data();
-
-   d3.select(this)
-    .style("font-weight", "bold");
-   // .style("fill", "red");
-
-   d.tmpSel = lc.selectAll("tspan").filter(e => e.key === d.key);
-   d.tmpSel
-    .style("font-weight", "bold")
-    .style("font-size", d => wordScale(d.nodes.length) + 10);
-   // .style("fill", "red");
-
-   // selComps.forEach(src => {
-   //   selComps.forEach(c => {
-   //     var q = ".bundle-link-" + src.id + "-" + c.id;
-   //     d3.selectAll(q)
-   //       .style("stroke-opacity", 0.2);
-   //   });
-   // });
-
   })
   .on("mouseout", function(d) {
-   d.tmpSel
-    .style("font-weight", null)
-    .style("font-size", d => wordScale(d.values.length))
-    .style("fill", null);
 
    // d3.selectAll(".bd")
    //   .style("stroke-opacity", linkOpacity);
   });
+  // var parent = this.parentNode;
+  // var tpLen = parent.getComputedTextLength();
+  // var id = d3.select(parent).data()[0].id;
+  // console.log("id", id);
+  // var arc = d3.select("#circle" + id);
+  // var pathLen = arc.node().getTotalLength();
+  // console.log("tpLen", tpLen, pathLen);
+  // if (tpLen > pathLen) {
+  //   console.log("longer");
+  //   d3.select(this).text("");
+  // }
+
 }
 
 var o = d3.scaleOrdinal()
@@ -326,7 +299,7 @@ function subGraphEnter(c) {
                 .force("center", d3.forceCenter(c.r, c.r))
                 .force("innerCircle", innerCircleCollide(c.nodes, c.r, 2))
                 .force("collide", d3.forceCollide(d => d.width * 2).strength(1))
-                .alphaMin(0.6);
+                .alphaMin(0.3);
 
 
   subSim.on("tick", function() {
@@ -401,7 +374,8 @@ function subGraphUpdate(c) {
     .attr("height", d => d.height + "px");
 
 
- if (!c.clicked) return;
+ if (!c.selected) return;
+
  var subSim = d3.forceSimulation(c.nodes)
                 .force("link", d3.forceLink(c.links)
                   .strength(0.06)
@@ -468,6 +442,42 @@ function subGraphUpdate(c) {
 //  subSim.on("end", function() {});
 }
 
+function growComp(simulation) {
+  return function(c) {
+    c.r *= 2.5;
+
+    c.nodes.forEach(d => {
+      d.width *= 3;
+      d.height *= 3;
+   });
+
+    c.selected = true;
+    c.sets.forEach(c => c.isolevel = 0.007);
+
+   var newSim = d3.forceSimulation(simulation.nodes())
+    .force("link", d3.forceLink(simulation.force("link").links())
+     .strength(0)
+     .distance(80)
+    )
+    // .force("charge", d3_force.forceManyBody()
+    //                    .strength(- 2)
+    //
+    //                    // .distanceMin(9)
+    //                    // .distanceMax(200)
+    // )
+    // .force("x", d3.forceX(d => d.pos.x)
+    //  .strength(0.01)
+    // )
+    // .force("y", d3.forceY(d => d.pos.y)
+    //  .strength(0.01)
+    // )
+    .force("collide", d3.forceCollide(d => d.r + 30).strength(1))
+    .alphaTarget(0.1)
+    .alpha(0.6)
+    .alphaMin(0.5);
+    updateCoreView(newSim);
+  };
+}
 
 function createCoreView(graph) {
  console.log("graph", graph);
@@ -495,6 +505,7 @@ function createCoreView(graph) {
   .size([width, height])
   .offset(LABEL_OFFSET)
   .dummyRad(5)
+  .offset(50)
   .nodes(compGraph.nodes)
   .links(compGraph.edges)
   //[30, 20, 70]
@@ -564,21 +575,15 @@ function createCoreView(graph) {
  var simulation = d3.forceSimulation(cola.nodes())
   .force("link", d3.forceLink(cola.links())
    .strength(0)
-   .distance(80)
   )
-  // .force("charge", d3_force.forceManyBody()
-  //                    .strength(- 2)
-  //                    // .distanceMin(9)
-  //                    // .distanceMax(200)
-  // )
   .force("x", d3.forceX(d => d.pos.x)
-   .strength(0.2)
+   .strength(0.1)
   )
   .force("y", d3.forceY(d => d.pos.y)
-   .strength(0.2)
+   .strength(0.1)
   )
-  .force("collide", d3.forceCollide(d => d.r).strength(1))
-  .alphaMin(0.3);
+  .force("collide", d3.forceCollide(d => d.r + 10).strength(1));
+  // .alphaMin(0.3);
 
  updateCoreView(simulation);
 }
@@ -637,10 +642,10 @@ function updateCoreView(simulation) {
  compEnter.append("circle")
   .attr("fill", "white");
 
- var radOffset = 3;
  compEnter
   .append("path")
   .attr("fill", "none")
+  .attr("class", "label-arc")
   .attr("id", d => "circle" + d.id);
 
  compEnter
@@ -654,54 +659,29 @@ function updateCoreView(simulation) {
     .attr("transform", c => "translate(" + [-c.r, -c.r] + ")")
     .each(subGraphUpdate);
 
- compMerge.select("path").attr("d", d => labelArc(d.r, d.r + radOffset));
+ compMerge.select(".label-arc")
+   .attr("d", d => labelArc(d.r + 5));
 
  compMerge.select("circle")
   .attr("r", d => d.r)
-  .on("click", function(c) {
-    c.r *= 2.5;
-
-    c.nodes.forEach(d => {
-      d.width *= 3;
-      d.height *= 3;
-   });
-
-    c.clicked = true;
-    c.sets.forEach(c => c.isolevel = 0.007);
-
-   var sim = d3.forceSimulation(simulation.nodes())
-    .force("link", d3.forceLink(simulation.force("link").links())
-     .strength(0)
-     .distance(80)
-    )
-    // .force("charge", d3_force.forceManyBody()
-    //                    .strength(- 2)
-    //                    // .distanceMin(9)
-    //                    // .distanceMax(200)
-    // )
-    .force("x", d3.forceX(d => d.pos.x)
-     .strength(0.2)
-    )
-    .force("y", d3.forceY(d => d.pos.y)
-     .strength(0.2)
-    )
-    .force("collide", d3.forceCollide(d => d.r).strength(1))
-    .alphaMin(0.3);
-    updateCoreView(sim);
-  });
+  .on("click", growComp(simulation));
 
  var textPathEnter = compEnter
   .append("g")
   .attr("class", "label-cont")
   .append("text")
+  // .attr("dy","-10")
   .append("textPath")
+  // .style("text-anchor","start") //place the text halfway on the arc
+  // .attr("startOffset", "50%")
   .attr("xlink:href", d => "#circle" + d.id);
 
  textPathEnter.selectAll("tspan")
-  .data(d => d.sets.slice(0, 5))
+  .data(d => d.sets)
   .enter()
   .append("tspan")
-  .call(styleTspan);
+  .each(styleTspan);
+  // .call(wrap);
 
  // var tl = textPath.node().getComputedTextLength();
  // textPath
@@ -827,7 +807,7 @@ function updateCoreView(simulation) {
 }
 
 d3.json("diigo.json", function(error, data) {
- var diigo = data.slice(0, 300).map((d, i) => {
+ var diigo = data.slice(0, 200).map((d, i) => {
   d.tags = d.tags.split(",");
   d.id = i;
   return d;

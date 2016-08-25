@@ -74,7 +74,7 @@ function pythag(r, b, coord, radius, w) {
 }
 
 function innerCircleCollide(nodes, r, pad) {
-  return function(alpha) {
+  return function() {
     for (var i = 0, n = nodes.length; i < n; ++i) {
       var d = nodes[i];
       d.x = pythag(pad, d.y, d.x, r, r * 2);
@@ -82,6 +82,48 @@ function innerCircleCollide(nodes, r, pad) {
     }
   };
 }
+function textCrop(el, text, width) {
+  if (typeof el.getSubStringLength !== "undefined") {
+    el.textContent = text;
+    var len = text.length;
+    while (el.getSubStringLength(0, len--) > width) {}
+    el.textContent = text.slice(0, len) + "...";
+  } else if (typeof el.getComputedTextLength !== "undefined") {
+    while (el.getComputedTextLength() > width) {
+      text = text.slice(0,-1);
+      el.textContent = text + "...";
+    }
+  } else {
+    // the last fallback
+    while (el.getBBox().width > width) {
+      text = text.slice(0,-1);
+      // we need to update the textContent to update the boundary width
+      el.textContent = text + "...";
+    }
+  }
+}
+
+function radialLine(self) {
+    var radius = self.data()[0].r,
+        radiansStart = - 1/2 * Math.PI,
+        radiansEnd = 2 * Math.PI;
+
+    var points = 50;
+
+    var angle = d3.scaleLinear()
+        .domain([0, points-1])
+        .range([radiansStart, radiansEnd]);
+
+    var line = d3.radialLine()
+        // .interpolate("basis")
+        // .tension(0)
+        .radius(radius)
+        .angle(function(d, i) { return angle(i); });
+
+    self.datum(d3.range(points))
+        .attr("class", "line")
+        .attr("d", line);
+}
 
 var parseTime = d3.timeParse("%Y/%m/%d %H:%M:%S %Z");
-export {innerCircleCollide, parseTime, rectCollide};
+export {textCrop, innerCircleCollide, parseTime, rectCollide};
