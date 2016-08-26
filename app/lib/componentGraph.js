@@ -211,11 +211,12 @@ const computeComponents = function(ns, es, limit) {
       tags: tags,
       nodes: compNodes,
       links: nodeLinks,
+      query: [],
       width: compNodes.length * 2,
       height: compNodes.length * 2,
       interTags: interTags,
-      sets: sets
-      // nodes: g
+      sets: sets,
+      setKeys: sets.map(s => s.id)
       };
   });
 

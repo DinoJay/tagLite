@@ -1,4 +1,6 @@
 "use strict";
+require("./style/style.less");
+
 import * as d3 from "d3";
 import _ from "lodash";
 
@@ -8,64 +10,62 @@ import computeCompGraph from "./lib/componentGraph.js";
 
 import tagListLayout from "./components/tagList.js";
 var tagList = tagListLayout();
-// import tagList from "./tagList.js";
+import offsetInterpolate from "./lib/polyOffset.js";
 import timeCloudLayout from "./components/tagStream.js";
 var timeCloud = timeCloudLayout();
-
 import marching_squares from "./lib/marchingSquaresHelpers.js";
-import offsetInterpolate from "./lib/polyOffset.js";
 
-import {cropText, innerCircleCollide} from "./lib/utils.js";
+import {innerCircleCollide} from "./lib/utils.js";
 import brewer from "colorbrewer";
 
-var wordScale = d3.scaleLinear();
-var circleSize = d3.scaleLinear();
-var LABEL_OFFSET = 40;
-var DUMMYNODE_SIZE = 50;
+const wordScale = d3.scaleLinear();
+const circleSize = d3.scaleLinear();
+const LABEL_OFFSET = 40;
+const DUMMYNODE_SIZE = 5;
 
-require("./style/style.less");
+var WIDTH = window.innerWidth * 2/3;
+var HEIGHT = 800; //window.innerHeight;
 
 const DOC_WIDTH = 4;
 const DOC_HEIGHT = 6;
 
-const bubbleScale = d3.scaleLinear()
-                          .domain([1, 100])
-                          .range([0.035, 0.14]);
-
-
 const CORE_Class = ".core.view";
-// function wrap() {
-// // arc.getTotalLength()
-//         var self = d3.select(this),
-//             textLength = this.parentNode.getComputedTextLength(),
-//             text = self.text();
-//         while (textLength > ( 100 - 2 * 2) && text.length > 0) {
-//             text = text.slice(0, -1);
-//             self.text(text + "...");
-//             textLength = self.node().getComputedTextLength();
-//         }
-//     }
-//
-// function growCompBubble(c, sim) {
-//  // programmaticZoomCircle(zh, svg)(d);
-// }
+
+function pythag(r, b, coord, radius, w) {
+ var hyp2 = Math.pow(radius, 2),
+  strokeWidth = 2;
+ // r += 1;
+
+ // force use of b coord that exists in circle to avoid sqrt(x<0)
+ b = Math.min(w - r - strokeWidth, Math.max(r + strokeWidth, b));
+
+ var b2 = Math.pow((b - radius), 2),
+  a = Math.sqrt(hyp2 - b2);
+
+ // radius - sqrt(hyp^2 - b^2) < coord < sqrt(hyp^2 - b^2) + radius
+ coord = Math.max(radius - a + r + strokeWidth,
+  Math.min(a + radius - r - strokeWidth, coord));
+
+ return coord;
+}
 
 function linkPath(d) {
- // Total difference in x and y from source to target
- var diffX = d.target.x - d.source.x;
- var diffY = d.target.y - d.source.y;
+  // Total difference in x and y from source to target
+  var diffX = d.target.x - d.source.x;
+  var diffY = d.target.y - d.source.y;
 
- // Length of path from center of source node to center of target node
- var pathLength = Math.sqrt((diffX * diffX) + (diffY * diffY));
+  // Length of path from center of source node to center of target node
+  var pathLength = Math.sqrt((diffX * diffX) + (diffY * diffY));
 
 
- var offsetXS = (diffX * d.source.r) / pathLength;
- var offsetYS = (diffY * d.source.r) / pathLength;
- // x and y distances from center to outside edge of target node
- var offsetXT = (diffX * d.target.r) / pathLength;
- var offsetYT = (diffY * d.target.r) / pathLength;
+  var offsetXS = (diffX * d.source.r) / pathLength;
+  var offsetYS = (diffY * d.source.r) / pathLength;
+  // x and y distances from center to outside edge of target node
+  var offsetXT = (diffX * d.target.r) / pathLength;
+  var offsetYT = (diffY * d.target.r) / pathLength;
 
- return "M" + (d.source.x + offsetXS) + "," + (d.source.y + offsetYS) + "L" + (d.target.x - offsetXT) + "," + (d.target.y - offsetYT);
+  return "M" + (d.source.x + offsetXS) + "," + (d.source.y + offsetYS)
+  + "L" + (d.target.x - offsetXT) + "," + (d.target.y - offsetYT);
 }
 
 
@@ -106,9 +106,9 @@ function programmaticZoom(zoomHandler, svg) {
    x = (bbox.x + bbox.x + bbox.width) / 2,
    y = (bbox.y + bbox.y + bbox.height) / 2,
    scale = Math.max(-20,
-    Math.min(2.5, 1 / Math.max(dx / width, dy / height))),
-   translate = [width / 2 - scale * x,
-    height / 2 - scale * y
+    Math.min(2.5, 1 / Math.max(dx / WIDTH, dy / HEIGHT))),
+   translate = [WIDTH / 2 - scale * x,
+    HEIGHT / 2 - scale * y
    ];
 
   zoomHandler.transform(svg,
@@ -125,9 +125,9 @@ function programmaticZoomCircle(zoomHandler, svg) {
     dy = d.w + offset,
     x = (d.x),
     y = (d.y),
-    scale = Math.max(-40, Math.min(8, 1 / Math.max(dx / width, dy / height))),
-    translate = [width / 2 - scale * x,
-     height / 2 - scale * y
+    scale = Math.max(-40, Math.min(8, 1 / Math.max(dx / WIDTH, dy / HEIGHT))),
+    translate = [WIDTH / 2 - scale * x,
+     HEIGHT / 2 - scale * y
     ];
 
    zoomHandler.transform(svg,
@@ -194,7 +194,6 @@ function extractTags(docNodes) {
 }
 
 function styleTspan(d) {
-  console.log("self", this);
  d3.select(this).attr("class", "tagLabel")
   .attr("font-size", function(d) {
    return wordScale(d.values.length);
@@ -235,9 +234,6 @@ var hullcurve = d3.line()
 //             .y(d => d.y)
 //             .curve(d3.curveBundle);
 
-var scale = 1;
-var width = window.innerWidth * scale;
-var height = 800 * scale; //window.innerHeight;
 
 var fill = (i) => d3.schemeCategory10[i];
 
@@ -266,7 +262,7 @@ var groupPath = function(nodes) {
 function subGraphEnter(c) {
   var self = d3.select(this);
   var bubbleCont = self.append("g").attr("class", "bc");
-  c.sets.forEach(c => c.isolevel = 0.035);
+  c.sets.forEach(s => s.isolevel = 0.030);
 
   var linkEnter = self.selectAll(".subLink")
     .data(c.links)
@@ -289,8 +285,12 @@ function subGraphEnter(c) {
     .attr("fill", "none");
    // .attr("opacity",  0)
     docEnter.append("image").attr("xlink:href", "icon-file.png");
-    docEnter.append("title").text(d => d.title);
+    docEnter.append("title").text(d => d.tags.join(","));
 
+    c.nodes.forEach(n => {
+      n.x = c.r;
+      n.x = c.r;
+    });
  var subSim = d3.forceSimulation(c.nodes)
                 .force("link", d3.forceLink(c.links)
                   .strength(0.06)
@@ -301,10 +301,15 @@ function subGraphEnter(c) {
                 .force("collide", d3.forceCollide(d => d.width * 2).strength(1))
                 .alphaMin(0.3);
 
+  c.subSim = subSim;
 
   subSim.on("tick", function() {
   // TODO: fix later
 
+  // c.nodes.forEach(d => {
+  //     d.x = pythag(2, d.y, d.x, c.r, c.r * 2);
+  //     d.y = pythag(2, d.x, d.y, c.r, c.r * 2);
+  // });
   docEnter
    .attr("transform", d => {
     return "translate(" + [d.x - d.width / 2, d.y - d.height / 2] + ")";
@@ -352,7 +357,7 @@ function subGraphEnter(c) {
   bubble.exit().remove();
    bubbleGroup.exit().remove();
 
-  }, c.sets, 4, c.r * 2); // bigger: 0.0048, 0.024 (with updated bubble points)
+  }, c); // bigger: 0.0048, 0.024 (with updated bubble points)
  });
 
 }
@@ -364,17 +369,20 @@ function subGraphUpdate(c) {
   var link = self.selectAll(".sub-link");
 
   var doc = self.selectAll(".doc");
+  var t = 500;
 
   doc.select("rect")
+    .transition(t)
     .attr("width", d => d.width)
     .attr("height", d => d.height);
 
   doc.select("image")
+    .transition(t)
     .attr("width", d => d.width + "px")
     .attr("height", d => d.height + "px");
 
 
- if (!c.selected) return;
+//  if (!c.selected) return;
 
  var subSim = d3.forceSimulation(c.nodes)
                 .force("link", d3.forceLink(c.links)
@@ -383,8 +391,13 @@ function subGraphUpdate(c) {
                 )
                 .force("center", d3.forceCenter(c.r, c.r))
                 .force("innerCircle", innerCircleCollide(c.nodes, c.r, 2))
-                .force("collide", d3.forceCollide(d => d.width * 1.5).strength(1))
+                .force("collide", d3.forceCollide(d => {
+                  return d.width === DOC_WIDTH ? d.width * 2 : d.width;
+                }).strength(1))
                 .alphaMin(0.6);
+
+
+  c.subSim = subSim;
 
 
   subSim.on("tick", function() {
@@ -437,47 +450,11 @@ function subGraphUpdate(c) {
   bubble.exit().remove();
    bubbleGroup.exit().remove();
 
-  }, c.sets, 4, c.r * 2); // bigger: 0.0048, 0.024 (with updated bubble points)
+  }, c); // bigger: 0.0048, 0.024 (with updated bubble points)
   });
 //  subSim.on("end", function() {});
 }
 
-function growComp(simulation) {
-  return function(c) {
-    c.r *= 2.5;
-
-    c.nodes.forEach(d => {
-      d.width *= 3;
-      d.height *= 3;
-   });
-
-    c.selected = true;
-    c.sets.forEach(c => c.isolevel = 0.007);
-
-   var newSim = d3.forceSimulation(simulation.nodes())
-    .force("link", d3.forceLink(simulation.force("link").links())
-     .strength(0)
-     .distance(80)
-    )
-    // .force("charge", d3_force.forceManyBody()
-    //                    .strength(- 2)
-    //
-    //                    // .distanceMin(9)
-    //                    // .distanceMax(200)
-    // )
-    // .force("x", d3.forceX(d => d.pos.x)
-    //  .strength(0.01)
-    // )
-    // .force("y", d3.forceY(d => d.pos.y)
-    //  .strength(0.01)
-    // )
-    .force("collide", d3.forceCollide(d => d.r + 30).strength(1))
-    .alphaTarget(0.1)
-    .alpha(0.6)
-    .alphaMin(0.5);
-    updateCoreView(newSim);
-  };
-}
 
 function createCoreView(graph) {
  console.log("graph", graph);
@@ -489,22 +466,27 @@ function createCoreView(graph) {
  var compGraph = computeCompGraph(graph.nodes, graph.edges, 3);
  compGraph.nodes.forEach(c => {
   c.nodes.forEach(d => {
-   d.width = DOC_WIDTH;
-   d.height = DOC_HEIGHT;
+    d.initW = _.clone(DOC_WIDTH);
+    d.initH = _.clone(DOC_HEIGHT);
+    d.width = _.clone(DOC_WIDTH);
+    d.height = _.clone(DOC_HEIGHT);
   });
  });
  // var ext = d3.extent(compGraph.nodes.map(d => d.nodes.length));
- circleSize = d3.scaleLinear()
+ circleSize
   .domain([1, 100])
   .rangeRound([30, 100]);
 
- compGraph.nodes.forEach(n => n.r = circleSize(n.nodes.length));
+ compGraph.nodes.forEach(n => {
+   n.initR = circleSize(n.nodes.length);
+   n.r = _.clone(n.initR);
+ });
  console.log("compGraph", compGraph.nodes);
 
  var cola = (new colaLayout)
-  .size([width, height])
+  .size([WIDTH, HEIGHT])
   .offset(LABEL_OFFSET)
-  .dummyRad(5)
+  .dummyRad(DUMMYNODE_SIZE)
   .offset(50)
   .nodes(compGraph.nodes)
   .links(compGraph.edges)
@@ -512,14 +494,10 @@ function createCoreView(graph) {
   .iterations([10, 10, 10])
   .start();
 
- d3.select()
-  .style("width", width - 25 + "px")
-  .style("height", height - 25 + "px");
-
  var svg = d3.select(CORE_Class).select("svg");
  var g = svg
-  .attr("width", width * scale)
-  .attr("height", height * scale)
+  .attr("width", WIDTH)
+  .attr("height", HEIGHT)
   .append("g")
   .attr("overflow", "hidden");
 
@@ -546,46 +524,47 @@ function createCoreView(graph) {
  g.append("g")
   .attr("class", "bubble-cont");
 
- var defs = svg.append("defs");
-
-
- defs.append("marker")
-  .attr("id", "end-arrow")
-  .attr("viewBox", "0 0 10 10")
-  .attr("refX", 4)
-  .attr("refY", 5)
-  .attr("orient", "auto")
-  .append("path")
-  .attr("d", "M0,0 L0,10 L10,5 z");
-
- defs.selectAll("marker")
-  .data(["end"]) // Different link/path types can be defined here
-  .enter().append("svg:marker") // This section adds in the arrows
-  .attr("id", String)
-  .attr("viewBox", "0 -5 10 10")
-  .attr("refX", 10)
-  .attr("refY", 0)
-  .attr("markerWidth", 15)
-  .attr("markerHeight", 15)
-  .attr("orient", "auto")
-  .append("svg:path")
-  .attr("d", "M0,-5L10,0L0,5")
-  .attr("class", "marker");
+//  var defs = svg.append("defs");
+//
+//
+//  defs.append("marker")
+//   .attr("id", "end-arrow")
+//   .attr("viewBox", "0 0 10 10")
+//   .attr("refX", 4)
+//   .attr("refY", 5)
+//   .attr("orient", "auto")
+//   .append("path")
+//   .attr("d", "M0,0 L0,10 L10,5 z");
+//
+//  defs.selectAll("marker")
+//   .data(["end"]) // Different link/path types can be defined here
+//   .enter().append("svg:marker") // This section adds in the arrows
+//   .attr("id", String)
+//   .attr("viewBox", "0 -5 10 10")
+//   .attr("refX", 10)
+//   .attr("refY", 0)
+//   .attr("markerWidth", 15)
+//   .attr("markerHeight", 15)
+//   .attr("orient", "auto")
+//   .append("svg:path")
+//   .attr("d", "M0,-5L10,0L0,5")
+//   .attr("class", "marker");
 
  var simulation = d3.forceSimulation(cola.nodes())
   .force("link", d3.forceLink(cola.links())
    .strength(0)
   )
   .force("x", d3.forceX(d => d.pos.x)
-   .strength(0.1)
+   .strength(0.4)
   )
   .force("y", d3.forceY(d => d.pos.y)
-   .strength(0.1)
+   .strength(0.4)
   )
-  .force("collide", d3.forceCollide(d => d.r + 10).strength(1));
-  // .alphaMin(0.3);
+  .force("collide", d3.forceCollide(d => d.r + 10).strength(1))
+  .alphaMin(0.6);
 
  updateCoreView(simulation);
+ tagList.create(graph.tags, d3.select(".tag-list"), simulation, updateCoreView);
 }
 
 
@@ -631,8 +610,8 @@ function updateCoreView(simulation) {
 
  var linkMerge = linkEnter.merge(link);
 
- var comp = svg.selectAll(".comp").data(simulation.nodes().filter(d => !d.dummy),
-  d => d.id);
+ var comp = svg.selectAll(".comp")
+   .data(simulation.nodes().filter(d => !d.dummy), d => d.id);
 
  var compEnter = comp
   .enter()
@@ -656,15 +635,17 @@ function updateCoreView(simulation) {
   var compMerge = compEnter.merge(comp);
 
   compMerge.selectAll(".node-cont")
-    .attr("transform", c => "translate(" + [-c.r, -c.r] + ")")
-    .each(subGraphUpdate);
+    .each(subGraphUpdate)
+    .attr("transform", c => "translate(" + [-c.r, -c.r] + ")");
 
  compMerge.select(".label-arc")
+  .transition(1000)
    .attr("d", d => labelArc(d.r + 5));
 
  compMerge.select("circle")
-  .attr("r", d => d.r)
-  .on("click", growComp(simulation));
+  .transition(1000)
+  .attr("r", d => d.r);
+  // .on("click", growComp(simulation));
 
  var textPathEnter = compEnter
   .append("g")
@@ -681,14 +662,6 @@ function updateCoreView(simulation) {
   .enter()
   .append("tspan")
   .each(styleTspan);
-  // .call(wrap);
-
- // var tl = textPath.node().getComputedTextLength();
- // textPath
- //   .attr("textLength", tl);
-
-  // compMerge.select(".node-cont")
-  //  .attr("transform", c => "translate(" + [-c.r, -c.r] + ")");
 
  simulation.on("tick", function() {
 
@@ -705,85 +678,6 @@ function updateCoreView(simulation) {
  });
 
  simulation.on("end", function() {
-  //   var flatLinks = foci._cutEdges.map(l => {
-  //                       return {
-  //                         source: l.source,
-  //                         target: l.target
-  //                       };
-  //                   });
-  //
-  // console.log("foci cutEdges", foci._cutEdges);
-  //
-  //   // var fbundling = edgeBundling()
-  //   //                 .step_size(0.1)
-  //   //                 .compatibility_threshold(0.35)
-  //   //                 .nodes(foci.nodes())
-  //   //                 .edges(flatLinks);
-  //   //
-  //   // var bundledEdgeSegments = fbundling();
-  //   var edgeCont = svg.select(".edge-seg");
-  //
-  //   edgeCont.selectAll(".link")
-  //     .data(flatLinks, (d) => d.id)
-  //     .enter()
-  //     // .append("g")
-  //     // .attr("class", "bundle-link-" + src.comp + "-" + tgt.comp + " bd")
-  //     .append("line")
-  //     .attr("class", "link")
-  //     .style("stroke-width", 5)
-  //     .style("stroke", "gray")
-  //     .style("fill", "none")
-  //     .style("stroke-opacity", 0.5) //use opacity as blending;
-  //     .attr("x1", d => d.source.x)
-  //     .attr("y1", d => d.source.y)
-  //     .attr("x2", d => d.target.x)
-  //     .attr("y2", d => d.target.y)
-  //     // .attr("d", d => bundleLine([{x: d.source.x, y: d.source.y},
-  //     //                             {x: d.target.x, y: d.target.y}]))
-  //     .on("mouseover", function(){
-  //       var segs = d3.select(this);
-  //       segs
-  //         .attr("opacity", 1);
-  //
-  //       segs.attr("fill", "red");
-  //     });
-
-
-  // bundledEdgeSegments.forEach((d, i) => {
-  // // for each of the arrays in the results
-  // // draw a line between the subdivions points for that edge
-  //
-  //   var src = d[0];
-  //   var tgt = d[d.length - 1];
-  //   var edgeSegs = edgeCont.selectAll("g")
-  //     .data([{source: src.comp, target: tgt.comp, path: d, id: i, focus: tgt.comp}], (d) => d.id)
-  //     .enter()
-  //     .append("g")
-  //     // .attr("class", "bundle-link-" + src.comp + "-" + tgt.comp + " bd")
-  //     .append("path")
-  //     .attr("class", "bundle-link-" + src.comp + "-" + tgt.comp + " bd")
-  //     .style("stroke-width", 5)
-  //     .style("stroke", "gray")
-  //     .style("fill", "none")
-  //     .style("stroke-opacity", 0.5) //use opacity as blending;
-  //     .attr("d", d => bundleLine(d.path))
-  //     .on("click", function(d) {
-  //       console.log("src", src, "tgt", src);
-  //       d3.selectAll(".bundle-link-" + d.source + "-" + d.target + " bd")
-  //         .attr("opacity", 1);
-  //
-  //       d.focus = d.focus === d.source ? d.target : d.source;
-  //       d3.select("#hull-" + d.focus).call(programmaticZoom(0.6));
-  //     })
-  //     .on("mouseover", function(d){
-  //       var segs = d3.select(this);
-  //       console.log("link", src);
-  //       segs
-  //         .attr("opacity", 1);
-  //
-  //       segs.attr("fill", "red");
-  //     });
-  // });
 
 
   d3.select("#zoom-hull").remove();
@@ -807,13 +701,14 @@ function updateCoreView(simulation) {
 }
 
 d3.json("diigo.json", function(error, data) {
- var diigo = data.slice(0, 200).map((d, i) => {
+ var diigo = data.slice(0, 100).map((d, i) => {
   d.tags = d.tags.split(",");
   d.id = i;
   return d;
  });
  var graph = computeTagGraph(diigo);
  createCoreView(graph);
+
  // tagList.createCoreView(nodes.nestedTags, d3.select(".tag-list"), foci, updateCoreView);
  // timeCloud.create(nodes.spreadTags, foci, timeCloudDiv, update, tagList);
 });

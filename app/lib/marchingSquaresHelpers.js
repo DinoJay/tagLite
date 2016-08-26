@@ -12,12 +12,12 @@ import * as d3 from "d3";
 //   .x(d => d.x)
 //   .y(d => d.y);
 
-function draw_marching_squares(callback, groups, cell_size = 4, rad=300) {
+function draw_marching_squares(callback, c, cell_size = 4, rad=300) {
   // var isolevel = 0.0010;
   var epsilon = 0.00000001;
   var grid = {
-    width: rad,
-    height: rad
+    width: c.r * 2,
+    height: c.r * 2
   };
 
   var set = []; //the current set for the bubble
@@ -170,10 +170,9 @@ function draw_marching_squares(callback, groups, cell_size = 4, rad=300) {
   var tetrisOpacityRange = [minTestrisOpacity, maxTestrisOpacity];
     var groupedPoints = [];
 
-  groups.forEach(g => {
-    // if (g.values.length === 0) return false;
+  c.sets.forEach(g => {
 
-    set = g.values; //graph.nodes.filter(function(x){return x.group==g;});
+    set = g.values.filter(d => _.intersection(d.tags, c.query).length === c.query.length); //graph.nodes.filter(function(x){return x.group==g;});
     if (set.length > 1) {
       // console.log("marching_squares g.set", g.set);
 
@@ -246,7 +245,6 @@ function draw_marching_squares(callback, groups, cell_size = 4, rad=300) {
       var arrayOfArrays = splitSortedBubblePoints(sortedBubblePoints);
 
       g.path = arrayOfArrays;
-      g.interTags = _.intersection(...g.values.map(d => d.tags));
       callback(g);
       // d3.select(".bubble-cont").selectAll(".bubble-"+g.key).remove();
 

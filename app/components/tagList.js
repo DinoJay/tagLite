@@ -1,7 +1,9 @@
 import * as d3 from "d3";
 import treeLayout from "../lib/oldTree/tree.js";
 import _ from "lodash";
-
+function fullSubset(tags, set) {
+  return _.intersection(tags, set).length === tags.length;
+}
 // var line = d3.line()
 //   .interpolate("basis")
 //   .x(d => d.y)
@@ -67,49 +69,93 @@ function traverse(cur, key, nodes) {
   }
 }
 
-function filterOut(cur, tagKey) {
-  if (cur.children) {
-    cur.children.forEach(next => {
-      filterOut(next, tagKey);
-    });
-  }
-}
+function highlightComp(path, oldSim, update) {
+  var range = [0.03, 0.004].concat(d3.range(0, 7).map(() => 0.0015));
+  var domain = d3.range(0, 10);
+  console.log("domain", domain, domain.length, "range", range, range.length);
+  console.log("path", path);
+  var isoScale = d3.scaleOrdinal()
+                   .domain(domain)
+                   .range(range);
 
-function getCur_helper(cur, res) {
-  if (cur.children) {
-    cur.children.forEach(next => {
-      getCur_helper(next, res);
+  var compNodes = oldSim.nodes().filter(d => !d.dummy);
+  compNodes.forEach(c => {
+    c.sets.forEach(s => s.isolevel = 0.030);
+    c.nodes.forEach(n => {
+      n.width = n.initW;
+      n.height = n.initH;
+      n.selected = false;
     });
+    c.selected = false;
+    c.r = c.initR;
+    c.query = [];
+    c.subSim.stop();
+  });
+
+  // if(path.length === 0) {
+  //   return;
+  // }
+
+  var selComps = compNodes
+    .filter(n => _.intersection(n.setKeys, path).length === path.length && path.length > 0);
+
+  selComps.forEach(c => {
+    var selectedSets = c.sets.reduce((acc, s) => {
+      var bool = s.values.some(n => fullSubset(path, n.tags));
+      if(bool) {
+        s.isolevel = isoScale(path.length);
+        acc.push(s);
+        c.query = path;
+      }
+      return acc;
+    }, []);
+
+    if (selectedSets.length > 0) {
+      // var oneW;
+      c.nodes.forEach(d => {
+        if(_.intersection(d.tags, path).length === path.length) {
+          d.selected = true;
+          d.width = d.initW + 20 * path.length;
+          d.height = d.initH + 20 * path.length;
+        }
+      });
+      c.selected = true;
+    }
+
+    var selNodes= c.nodes.filter(n => n.selected);
+    var selectedW = selNodes.length > 0 ? selNodes[0].width : 0;
+    console.log("selectedW", selectedW, "selNodes.length",
+      selNodes.length, "initR", c.initR, "path.length", path.length);
+    c.r = c.initR + Math.sqrt(selNodes.length) * selectedW;
+  });
+
+  var newSim;
+  if (path.length > 0) {
+   newSim = d3.forceSimulation(oldSim.nodes())
+    .force("link", d3.forceLink(oldSim.force("link").links())
+     .strength(0)
+     .distance(80)
+    )
+    .force("collide", d3.forceCollide(d => d.r + 30).strength(1))
+    .alphaTarget(0.1)
+    .alpha(0.6)
+    .alphaMin(0.5);
   } else {
-    res = cur;
+   newSim = d3.forceSimulation(oldSim.nodes())
+     .force("link", d3.forceLink(oldSim.force("link").links())
+     .strength(0)
+    )
+    .force("x", d3.forceX(d => d.pos.x)
+     .strength(0.4)
+    )
+    .force("y", d3.forceY(d => d.pos.y)
+     .strength(0.4)
+    )
+    .force("collide", d3.forceCollide(d => d.r + 10).strength(1))
+    .alphaMin(0.6);
   }
+  update(newSim);
 }
-
-var findByDepth = function(start, depth) {
-  var q = [],
-    cur;
-
-  q.push(start);
-  while (q.length > 0) {
-    cur = q.pop();
-    if (cur.depth === depth) return cur;
-    if (cur.children) q.push(...cur.children);
-  }
-};
-
-// function findByDepth(cur, depth) {
-//   if (cur.depth === depth){
-//     return cur;
-//   }
-//   else {
-//     if (cur.children) {
-//       return cur.children.filter(next => {
-//         return findByDepth(next, depth);
-//       });
-//     }
-//     return null;
-//   }
-// }
 
 function yield0(cur, nodes) {
   if (cur.children) {
@@ -196,7 +242,7 @@ function tagListCreate(nodes, cont, sim, coreUpdate) {
   d3.select(".tag-list")
       .append("div")
       .append("input")
-      .attr("id", "search-tree")
+      .attr("id", "search-mask")
       .style("position", "relative");
 
 
@@ -247,33 +293,24 @@ function tagListUpdate(source, sim, coreUpdate, inputVal) {
       reinsert(d.parent, d.key, clonedChilds.concat(yield0(d, succs)),
         nodeMap);
 
-      console.log("d.path", d.path);
+      console.log("selected tags", d.path);
+      highlightComp(d.path, sim, coreUpdate);
       tagListUpdate.bind(this)(source, sim, coreUpdate);
       this._tmpSource =_.cloneDeep(source);
 
-      sim.sets(d.path)
-          .timerange(null)
-          .start();
-
-      coreUpdate(sim, {search: false, main: true, cloud: true}, {});
 
     } else {
       d.path = _.uniq(d.path.concat(d.parent.path, [d.key]));
       nbs = nbs_map(d, nodeMap);
 
       d.children = nbs;
-      // var children_ids = nbs.map(d => d.key);
-      // d.old_children = d._children;
       traverse(source, d.key, nbs.map(d => d.key));
+      console.log("selected tags", d.path);
       tagListUpdate.bind(this)(source, sim, coreUpdate);
-
-      sim.sets(d.path)
-          .start();
-
-      coreUpdate(sim, {search: false, main: true, cloud: true}, {});
+      highlightComp(d.path, sim, coreUpdate);
+      // coreUpdate(sim, {search: false, main: true, cloud: true}, {});
     }
   };
-
 
   var g = d3.select("#dynTree");
   var svg = d3.select("#dynTreeCont");
@@ -281,7 +318,6 @@ function tagListUpdate(source, sim, coreUpdate, inputVal) {
   console.log("this", this);
   var nodeMap = this._nodeMap;
 
-  console.log("source NODE", source);
   var tree = treeLayout()
       .nodeSize([0, 30]);
   // Compute the flattened node list. TODO use d3.layout.hierarchy.
@@ -301,84 +337,6 @@ function tagListUpdate(source, sim, coreUpdate, inputVal) {
   rootDatum.x = 0;
   rootDatum.height = 20;
   rootDatum.width = 50;
-
-
-    // nodes.length * barHeight + margin.top + margin.bottom);
-
-  // tagListUpdate the nodes…
-
-  // rootEnter
-  //   .on("focusin", function(d) {
-  //     console.log("focusin");
-  //     var input = d3.select(this).node().value;
-  //     if (input === "") {
-  //       d.oldSrc = _.cloneDeep(source);
-  //       console.log("empty", "oldSrc", d.oldSrc);
-  //       // tagListUpdate(d.oldSrc);
-  //     }
-  //   })
-  //   .on("focusout", function(d) {
-  //     var input = d3.select(this).node().value;
-  //     if (input === "")
-  //       tagListUpdate(d.oldSrc);
-  //
-  //     var maxDepth = d3.max(treeNodes.filter(n => n.children),
-  //       d => d.depth);
-  //     console.log("maxDepth", maxDepth);
-  //     var newSrc = findByDepth(source, maxDepth);
-  //     console.log("newSrc", newSrc);
-  //     newSrc.children = newSrc.children
-  //       .filter(d => d.key.includes(input));
-  //
-  //     newSrc.yScale = d3.scaleLinear()
-  //       .domain([1, d3.max(source.children, d => d.values.length)])
-  //       .range([10, source.height]);
-  //
-  //     tagListUpdate(source);
-  //   });
-
-  // rootEnter
-  //   .append("foreignObject", ":first-child")
-  //     .append("xhtml:input")
-  //     .attr("type", "text")
-  //     .on("focusin", function(d) {
-  //       console.log("focusin");
-  //       var input = d3.select(this).node().value;
-  //       if (input === "") {
-  //         d.oldSrc = _.cloneDeep(source);
-  //         console.log("empty", "oldSrc", d.oldSrc);
-  //         // tagListUpdate(d.oldSrc);
-  //       }
-  //     })
-  //     .on("focusout", function(d) {
-  //
-  //       var input = d3.select(this).node().value;
-  //       if (input === "")
-  //         tagListUpdate(d.oldSrc);
-  //
-  //       var maxDepth = d3.max(treeNodes.filter(n => n.children), d => d.depth);
-  //       console.log("maxDepth", maxDepth);
-  //       var newSrc = findByDepth(source, maxDepth);
-  //       console.log("newSrc", newSrc);
-  //       newSrc.children = newSrc.children
-  //         .filter(d => d.key.includes(input));
-  //
-  //       newSrc.yScale = d3.scaleLinear()
-  //         .domain([1, d3.max(source.children, d => d.values.length)])
-  //         .range([10, source.height]);
-  //
-  //       tagListUpdate(source);
-  //     });
-
-  // rootEnter
-  //     // .attr("y", d => -d.height / 2)
-  //     .style("height", d => d.height + "px")
-  //     .style("width", 100 + "px")
-  //     .style("transform", "translate(" + margin.left + "px," + margin.top + "px)");
-      // .attr("width", maxBarWidth)
-      // .style("background", "orange")
-      // .style("opacity", 1e-6)
-
 
   var node = g.selectAll("g.node")
       .data(nodes, d => d.key);
@@ -484,26 +442,6 @@ function tagListUpdate(source, sim, coreUpdate, inputVal) {
       .attr("class", "link");
 
   var linkMerge = linkEnter.merge(link);
-      // .attr("d", (d) => {
-      //   return stepLine([{
-      //     x: d.source.y,
-      //     y: d.source.x + d.source.height / 2
-      //   }, {
-      //     x: d.target.y + d.target.height / 2,
-      //     y: d.target.x
-      //   }]);
-      // })
-    // .transition()
-      // .duration(duration)
-      // .attr("d", d => {
-      //   return stepLine([{
-      //     x: d.source.y,
-      //     y: d.source.x + d.source.height / 2
-      //   }, {
-      //     x: d.target.y,
-      //     y: d.target.x + d.target.height / 2
-      //   }]);
-      // });
 
   // Transition links to their new position.
   linkMerge
@@ -539,15 +477,15 @@ function tagListUpdate(source, sim, coreUpdate, inputVal) {
     d.y0 = d.y;
   });
 
-  // if (d3.select("#search-tree").empty()) {
-  d3.select("#search-tree")
+  // if (d3.select("#search-mask").empty()) {
+  d3.select("#search-mask")
     .style("transform", "translate("+rootDatum.x +"px,"+ rootDatum.bbox.height/2 +"px)")
     .style("font-size", "large")
     .style("height", rootDatum.bbox.height + "px")
     .style("top", rootDatum.y + "px");
   // }
 
-  var root = d3.select("#search-tree")
+  d3.select("#search-mask")
     .attr("value", inputVal ? inputVal : null)
     .on("focusout", () => {
       var input = d3.select(".tag-list input").node().value;
@@ -566,9 +504,9 @@ function tagListUpdate(source, sim, coreUpdate, inputVal) {
       }
       else {
         tagListUpdate.bind(this)(this._tmpSource, sim, coreUpdate, input);
-        sim.sets(this._tmpSource.children.map(d => d.key), true)
-            .start();
-        coreUpdate(sim, {search: false, main: true, cloud: true}, {});
+        var tags = this._tmpSource.children.map(d => d.key);
+        console.log("tags", tags);
+        coreUpdate(sim);
       }
     });
 
