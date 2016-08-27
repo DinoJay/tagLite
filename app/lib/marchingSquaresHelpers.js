@@ -173,6 +173,7 @@ function draw_marching_squares(callback, c, cell_size = 4, rad=300) {
   c.sets.forEach(g => {
 
     set = g.values.filter(d => _.intersection(d.tags, c.query).length === c.query.length); //graph.nodes.filter(function(x){return x.group==g;});
+
     if (set.length > 1) {
       // console.log("marching_squares g.set", g.set);
 

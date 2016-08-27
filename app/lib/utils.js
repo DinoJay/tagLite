@@ -73,12 +73,14 @@ function pythag(r, b, coord, radius, w) {
  return coord;
 }
 
-function innerCircleCollide(nodes, r, pad) {
+function innerCircleCollide(nodes, r) {
   return function() {
     for (var i = 0, n = nodes.length; i < n; ++i) {
       var d = nodes[i];
-      d.x = pythag(pad, d.y, d.x, r, r * 2);
-      d.y = pythag(pad, d.x, d.y, r, r * 2);
+      // d.vx = pythag(d.width / 2, d.y, d.x, r, r * 2);
+      // d.vy = pythag(d.height / 2, d.x, d.y, r, r * 2);
+      d.x = pythag(d.width / 2, d.y, d.x, r, r * 2);
+      d.y = pythag(d.height / 2, d.x, d.y, r, r * 2);
     }
   };
 }

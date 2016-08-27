@@ -72,15 +72,16 @@ function traverse(cur, key, nodes) {
 function highlightComp(path, oldSim, update) {
   var range = [0.03, 0.004].concat(d3.range(0, 7).map(() => 0.0015));
   var domain = d3.range(0, 10);
-  console.log("domain", domain, domain.length, "range", range, range.length);
-  console.log("path", path);
   var isoScale = d3.scaleOrdinal()
                    .domain(domain)
                    .range(range);
 
   var compNodes = oldSim.nodes().filter(d => !d.dummy);
   compNodes.forEach(c => {
-    c.sets.forEach(s => s.isolevel = 0.030);
+    c.sets.forEach(s => {
+      s.isolevel = 0.030;
+      s.selected = false;
+    });
     c.nodes.forEach(n => {
       n.width = n.initW;
       n.height = n.initH;
@@ -104,6 +105,7 @@ function highlightComp(path, oldSim, update) {
       var bool = s.values.some(n => fullSubset(path, n.tags));
       if(bool) {
         s.isolevel = isoScale(path.length);
+        s.selected = true;
         acc.push(s);
         c.query = path;
       }
@@ -141,6 +143,11 @@ function highlightComp(path, oldSim, update) {
     .alpha(0.6)
     .alphaMin(0.5);
   } else {
+    compNodes.forEach(c => {
+      c.sets.forEach(s => s.selected = true);
+      c.selected = true;
+      c.nodes.forEach(n => n.selected = true);
+    });
    newSim = d3.forceSimulation(oldSim.nodes())
      .force("link", d3.forceLink(oldSim.force("link").links())
      .strength(0)
@@ -154,6 +161,7 @@ function highlightComp(path, oldSim, update) {
     .force("collide", d3.forceCollide(d => d.r + 10).strength(1))
     .alphaMin(0.6);
   }
+  oldSim.stop();
   update(newSim);
 }
 

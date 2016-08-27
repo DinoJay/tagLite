@@ -100,9 +100,10 @@ function zoomHandler(svg) {
 
 function programmaticZoom(zoomHandler, svg) {
  return function(self) {
+  var offset = 100;
   var bbox = self.node().getBBox(),
-   dx = bbox.width,
-   dy = bbox.height,
+   dx = bbox.width + offset,
+   dy = bbox.height + offset,
    x = (bbox.x + bbox.x + bbox.width) / 2,
    y = (bbox.y + bbox.y + bbox.height) / 2,
    scale = Math.max(-20,
@@ -172,25 +173,6 @@ function plotLabels(c, group, i, sets) {
   .style("opacity", 0.01);
  compNode.selectAll(".bubble" + group.key + i).select("path")
   .style("opacity", 1);
-}
-
-function extractTags(docNodes) {
- var spreadNodes = _.flatten(docNodes.map(d => d.tags.map(t => {
-  var copy = _.clone(d);
-  copy.key = t;
-  return copy;
- })));
-
- var allTags = d3.nest()
-  .key(d => d.key)
-  .entries(spreadNodes)
-  .sort((a, b) => d3.descending(a.values.length, b.values.length));
-
- return {
-  nested: allTags,
-  spread: spreadNodes
- };
-
 }
 
 function styleTspan(d) {
@@ -287,78 +269,80 @@ function subGraphEnter(c) {
     docEnter.append("image").attr("xlink:href", "icon-file.png");
     docEnter.append("title").text(d => d.tags.join(","));
 
-    c.nodes.forEach(n => {
-      n.x = c.r;
-      n.x = c.r;
-    });
- var subSim = d3.forceSimulation(c.nodes)
-                .force("link", d3.forceLink(c.links)
-                  .strength(0.06)
-                  .distance(8)
-                )
-                .force("center", d3.forceCenter(c.r, c.r))
-                .force("innerCircle", innerCircleCollide(c.nodes, c.r, 2))
-                .force("collide", d3.forceCollide(d => d.width * 2).strength(1))
-                .alphaMin(0.3);
+    // c.nodes.forEach(n => {
+    //   n.vx = Math.floor(Math.random() * c.r * 2);
+    //   n.vy = Math.floor(Math.random() * c.r * 2);
+    // });
 
-  c.subSim = subSim;
+  // c.subSim = d3.forceSimulation(c.nodes)
+  //               .force("link", d3.forceLink(c.links)
+  //                 .strength(0.3)
+  //                 .distance(8)
+  //               )
+                // .force("center", d3.forceCenter(c.r, c.r))
+                // .force("charge", d3.forceManyBody(100))
+                // .force("innerCircle", innerCircleCollide(c.nodes, c.r))
+                // .force("collide", d3.forceCollide(d => {
+                //   return d.width === DOC_WIDTH ? d.width * 1.5 : d.width;
+                // }).strength(1));
+                // .alphaMin(0.0);
 
-  subSim.on("tick", function() {
-  // TODO: fix later
-
-  // c.nodes.forEach(d => {
-  //     d.x = pythag(2, d.y, d.x, c.r, c.r * 2);
-  //     d.y = pythag(2, d.x, d.y, c.r, c.r * 2);
-  // });
-  docEnter
-   .attr("transform", d => {
-    return "translate(" + [d.x - d.width / 2, d.y - d.height / 2] + ")";
-   });
-
-  linkEnter
-   .attr("x1", l => l.source.x)
-   .attr("y1", l => l.source.y)
-   .attr("x2", l => l.target.x)
-   .attr("y2", l => l.target.y);
-
-  bubbleCont.selectAll("*").remove();
-
-  marching_squares(set => {
-   // TODO: not running right now
-   // this happens in a for loop
-   bubbleCont
-    .selectAll(".bubble-" + set.key).remove();
-
-   var bubbleGroup = bubbleCont
-    .selectAll(".bubble-" + set.key)
-    .data([set]);
-
-   var bubbleGroupEnter = bubbleGroup.enter()
-    .append("g")
-    .attr("class", "bubble-" + set.key);
-
-   var bubble = bubbleGroupEnter.selectAll("path")
-    .data(d => d.path);
-
-   var bubbleEnter = bubble.enter()
-    .append("path");
-
-   var bubbleMerge = bubbleEnter.merge(bubble);
-
-    bubbleMerge
-    .attr("class", (_, i) => "bubble-" + i + set.key + "bubble")
-    .attr("stroke-linejoin", "round")
-    .attr("opacity", 0.5)
-    .attr("d", d => hullcurve(d))
-    .attr("fill", o(set.key))
-    .style("cursor", "pointer")
-    .on("click", () => bubbleGroupEnter.call(programmaticZoom(0.6)));
-
-  bubble.exit().remove();
-   bubbleGroup.exit().remove();
-
-  }, c); // bigger: 0.0048, 0.024 (with updated bubble points)
- });
+//   c.subSim.on("tick", function() {
+//   // TODO: fix later
+//
+//   // c.nodes.forEach(d => {
+//   //     d.x = pythag(2, d.y, d.x, c.r, c.r * 2);
+//   //     d.y = pythag(2, d.x, d.y, c.r, c.r * 2);
+//   // });
+//   docEnter
+//    .attr("transform", d => {
+//     return "translate(" + [d.x - d.width / 2, d.y - d.height / 2] + ")";
+//    });
+//
+//   linkEnter
+//    .attr("x1", l => l.source.x)
+//    .attr("y1", l => l.source.y)
+//    .attr("x2", l => l.target.x)
+//    .attr("y2", l => l.target.y);
+//
+//   bubbleCont.selectAll("*").remove();
+//
+//   marching_squares(set => {
+//    // TODO: not running right now
+//    // this happens in a for loop
+//    bubbleCont
+//     .selectAll(".bubble-" + set.key).remove();
+//
+//    var bubbleGroup = bubbleCont
+//     .selectAll(".bubble-" + set.key)
+//     .data([set]);
+//
+//    var bubbleGroupEnter = bubbleGroup.enter()
+//     .append("g")
+//     .attr("class", "bubble-" + set.key);
+//
+//    var bubble = bubbleGroupEnter.selectAll("path")
+//     .data(d => d.path);
+//
+//    var bubbleEnter = bubble.enter()
+//     .append("path");
+//
+//    var bubbleMerge = bubbleEnter.merge(bubble);
+//
+//     bubbleMerge
+//     .attr("class", (_, i) => "bubble-" + i + set.key + "bubble")
+//     .attr("stroke-linejoin", "round")
+//    .attr("opacity", 0.5)
+//     .attr("d", d => hullcurve(d))
+//     .attr("fill", o(set.key))
+//     .style("cursor", "pointer")
+//     .on("click", () => bubbleGroupEnter.call(programmaticZoom(0.6)));
+//
+//   bubble.exit().remove();
+//   bubbleGroup.exit().remove();
+//
+//   }, c); // bigger: 0.0048, 0.024 (with updated bubble points)
+//  });
 
 }
 
@@ -366,7 +350,8 @@ function subGraphUpdate(c) {
   var self = d3.select(this);
   var bubbleCont = self.select(".bc");
 
-  var link = self.selectAll(".sub-link");
+  var link = self.selectAll(".sub-link")
+    .style("opacity", d => d.selected ? 1 : 0.1);
 
   var doc = self.selectAll(".doc");
   var t = 500;
@@ -374,33 +359,44 @@ function subGraphUpdate(c) {
   doc.select("rect")
     .transition(t)
     .attr("width", d => d.width)
-    .attr("height", d => d.height);
+    .attr("height", d => d.height)
+    .style("opacity", d => d.selected ? 1 : 0.1);
 
   doc.select("image")
     .transition(t)
     .attr("width", d => d.width + "px")
-    .attr("height", d => d.height + "px");
+    .attr("height", d => d.height + "px")
+    .style("opacity", d => d.selected ? 1 : 0.1);
 
-
-//  if (!c.selected) return;
-
- var subSim = d3.forceSimulation(c.nodes)
+  c.subSim = d3.forceSimulation(c.nodes)
                 .force("link", d3.forceLink(c.links)
                   .strength(0.06)
                   .distance(8)
                 )
                 .force("center", d3.forceCenter(c.r, c.r))
-                .force("innerCircle", innerCircleCollide(c.nodes, c.r, 2))
+                // .force("charge", d3.forceManyBody(-2))
+                .force("innerCircle", innerCircleCollide(c.nodes, c.r))
                 .force("collide", d3.forceCollide(d => {
-                  return d.width === DOC_WIDTH ? d.width * 2 : d.width;
-                }).strength(1))
-                .alphaMin(0.6);
+                  if (!d.selected) return 0;
+                  return (d.width === DOC_WIDTH) ? d.width * 1.5 : d.width;
+                }).strength(c.sets.length === 1 ? 0 : 1))
+                // .alpha(1)
+                .alphaTarget(0.5)
+                .alphaMin(0.4);
+  // c.subSim = d3.forceSimulation(c.nodes)
+  //               .force("link", d3.forceLink(c.links)
+  //                 .strength(0.06)
+  //                 .distance(8)
+  //               )
+  //               .force("center", d3.forceCenter(c.r, c.r))
+  //               .force("innerCircle", innerCircleCollide(c.nodes, c.r))
+  //               .force("collide", d3.forceCollide(d => {
+  //                 return d.width === DOC_WIDTH ? d.width * 1.5 : d.width;
+  //               }).strength(1))
+  //               .alphaMin(0.6);
 
 
-  c.subSim = subSim;
-
-
-  subSim.on("tick", function() {
+  c.subSim.on("tick", function() {
   // TODO: fix later
 
   doc
@@ -445,6 +441,7 @@ function subGraphUpdate(c) {
     .attr("d", d => hullcurve(d))
     .attr("fill", o(set.key))
     .style("cursor", "pointer")
+    .style("opacity", c.selected ? 0.7 : 0.1)
     .on("click", () => bubbleGroupEnter.call(programmaticZoom(0.6)));
 
   bubble.exit().remove();
@@ -465,12 +462,15 @@ function createCoreView(graph) {
 
  var compGraph = computeCompGraph(graph.nodes, graph.edges, 3);
  compGraph.nodes.forEach(c => {
+  c.selected = true;
   c.nodes.forEach(d => {
     d.initW = _.clone(DOC_WIDTH);
     d.initH = _.clone(DOC_HEIGHT);
     d.width = _.clone(DOC_WIDTH);
     d.height = _.clone(DOC_HEIGHT);
+    d.selected = true;
   });
+  c.sets.forEach(s => s.selected = true);
  });
  // var ext = d3.extent(compGraph.nodes.map(d => d.nodes.length));
  circleSize
@@ -543,6 +543,7 @@ function createCoreView(graph) {
 //   .attr("viewBox", "0 -5 10 10")
 //   .attr("refX", 10)
 //   .attr("refY", 0)
+//  c.selected = true;
 //   .attr("markerWidth", 15)
 //   .attr("markerHeight", 15)
 //   .attr("orient", "auto")
@@ -576,12 +577,6 @@ function updateCoreView(simulation) {
 
  var zh = zoomHandler(svg);
 
- svg
-  .call(zh)
-  .on("dblclick", null)
-  .on("wheel", function() {
-   console.log("d");
-  });
 
  var dummyData = simulation.nodes().filter(d => d.dummy);
  console.log("dummyData", dummyData);
@@ -598,6 +593,10 @@ function updateCoreView(simulation) {
 
  var dummyMerge = dummyEnter.merge(dummy);
 
+ dummyMerge
+   .select("circle")
+   .style("opacity", d => d.src.selected && d.tgt.selected ? 1 : 0.1);
+
  dummy.exit().remove();
 
  var link = svg.selectAll(".link")
@@ -609,6 +608,11 @@ function updateCoreView(simulation) {
   .attr("class", "link");
 
  var linkMerge = linkEnter.merge(link);
+
+ linkMerge.style("opacity", l => {
+  var dummy = l.source.dummy ? l.source : l.target;
+  return (dummy.src.selected && dummy.tgt.selected) ? 1 : 0.1;
+ });
 
  var comp = svg.selectAll(".comp")
    .data(simulation.nodes().filter(d => !d.dummy), d => d.id);
@@ -643,9 +647,19 @@ function updateCoreView(simulation) {
    .attr("d", d => labelArc(d.r + 5));
 
  compMerge.select("circle")
-  .transition(1000)
+  // transition not working here
+  // .transition(1000)
   .attr("r", d => d.r);
+  // .style("opacity", d => d.selected ? 1 : 0.1);
   // .on("click", growComp(simulation));
+
+ comp.select("circle")
+    .transition(1000)
+   .style("opacity", d => d.selected ? 1 : 0.1);
+
+ comp.select(".label-cont").select("text")
+   .transition(1000)
+   .style("opacity", d => d.selected ? 1 : 0.1);
 
  var textPathEnter = compEnter
   .append("g")
@@ -663,6 +677,10 @@ function updateCoreView(simulation) {
   .append("tspan")
   .each(styleTspan);
 
+  comp.filter(c => c.selected).select(".label-cont").selectAll("tspan")
+    .transition(1000)
+    .attr("font-size", s => s.selected ? wordScale(s.values.length) : 0);
+
  simulation.on("tick", function() {
 
   dummyMerge
@@ -679,7 +697,6 @@ function updateCoreView(simulation) {
 
  simulation.on("end", function() {
 
-
   d3.select("#zoom-hull").remove();
   var zoomHull = svg
    // .attr("class", "group")
@@ -687,21 +704,21 @@ function updateCoreView(simulation) {
    .insert("path", ":first-child")
    .attr("class", "hull")
    .attr("id", "zoom-hull")
-   .attr("d", groupPath(simulation.nodes().filter(d => !d.dummy)))
+   .attr("d", groupPath(simulation.nodes().filter(c => c.selected).filter(d => !d.dummy)))
    .attr("fill", "none");
   // .style("opacity", 0.5)
   // .on("click", function() {programmaticZoom(zh, svg);});
   //
   zoomHull.call(programmaticZoom(zh, svg));
-
- });
-
- // console.log("hull", hull, "doc", doc);
+   svg
+    .call(zh)
+    .on("dblclick", null);
+   });
 
 }
 
 d3.json("diigo.json", function(error, data) {
- var diigo = data.slice(0, 100).map((d, i) => {
+ var diigo = data.slice(0, 200).map((d, i) => {
   d.tags = d.tags.split(",");
   d.id = i;
   return d;
