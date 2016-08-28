@@ -121,15 +121,17 @@ function programmaticZoom(zoomHandler, svg) {
 
 function programmaticZoomCircle(zoomHandler, svg) {
   return function(d) {
+  console.log("d", d);
    var offset = 50;
-   var dx = d.w + offset,
-    dy = d.w + offset,
+   var dx = d.width + offset,
+    dy = d.height + offset,
     x = (d.x),
     y = (d.y),
     scale = Math.max(-40, Math.min(8, 1 / Math.max(dx / WIDTH, dy / HEIGHT))),
     translate = [WIDTH / 2 - scale * x,
      HEIGHT / 2 - scale * y
     ];
+    console.log(dx, dy, x, y, scale, translate);
 
    zoomHandler.transform(svg,
     d3.zoomIdentity
@@ -180,7 +182,7 @@ function styleTspan(d) {
   .attr("font-size", function(d) {
    return wordScale(d.values.length);
   })
-  .text(d => d.key + " · ")
+  .text(d => d.interset + " · ")
   .on("mouseover", function(d) {
   })
   .on("mouseout", function(d) {
@@ -379,10 +381,10 @@ function subGraphUpdate(c) {
                 .force("collide", d3.forceCollide(d => {
                   if (!d.selected) return 0;
                   return (d.width === DOC_WIDTH) ? d.width * 1.5 : d.width;
-                }).strength(c.sets.length === 1 ? 0 : 1))
+                }).strength(1))
                 // .alpha(1)
                 .alphaTarget(0.5)
-                .alphaMin(0.4);
+                .alphaMin(0.8);
   // c.subSim = d3.forceSimulation(c.nodes)
   //               .force("link", d3.forceLink(c.links)
   //                 .strength(0.06)
@@ -437,12 +439,45 @@ function subGraphUpdate(c) {
     bubbleMerge
     .attr("class", (_, i) => "bubble-" + i + set.key + "bubble")
     .attr("stroke-linejoin", "round")
-    .attr("opacity", 0.5)
+    .attr("opacity", 0.1)
     .attr("d", d => hullcurve(d))
     .attr("fill", o(set.key))
     .style("cursor", "pointer")
-    .style("opacity", c.selected ? 0.7 : 0.1)
-    .on("click", () => bubbleGroupEnter.call(programmaticZoom(0.6)));
+    .style("opacity", 0.3)
+    // .on("click", function() {programmaticZoom(zh, svg);});
+    .on("click", () => bubbleGroupEnter.call(programmaticZoom(zh, 0.6)))
+    .on("mouseover", function() {
+      var parent = d3.select(self.node().parentNode);
+      var labelCont = parent.select(".label-cont");
+      d3.select(this).style("opacity", 1);
+      var tspan = labelCont.select("text").select("textPath").selectAll("tspan");
+      tspan.transition(1000)
+        .attr("font-size", d => d.interset !== set.interset ? 0 : wordScale(d.values.filter(d => d.selected).length));
+      // d3.select(this).style("fill", "blue");
+      // d3.select(this).attr("opacity", 1);
+      //
+      // var tp = d3.select(".label-cont-" + c.id);
+      // var sets = c.sets.filter(d => group.interTags.includes(d.key));
+      // console.log("sets", sets);
+      // plotLabels(c, group, i, sets);
+
+    })
+    .on("mouseout", function() {
+      d3.select(this).style("opacity", 0.3);
+      var parent = d3.select(self.node().parentNode);
+      var labelCont = parent.select(".label-cont");
+      var tspan = labelCont.select("text").select("textPath").selectAll("tspan");
+      tspan.transition(1000).attr("font-size", d => wordScale(d.values.filter(d => d.selected).length));
+      // d3.select(this).transition(200).style("opacity", 1);
+      // d3.select(this).attr("opacity", 1);
+      //
+      // var tp = d3.select(".label-cont-" + c.id);
+      // var sets = c.sets.filter(d => group.interTags.includes(d.key));
+      // console.log("sets", sets);
+      // plotLabels(c, group, i, sets);
+
+    });
+    // .on("click", () => bubbleGroupEnter.call(programmaticZoom(0.6)));
 
   bubble.exit().remove();
    bubbleGroup.exit().remove();
@@ -458,7 +493,7 @@ function createCoreView(graph) {
 
  wordScale
   .domain(d3.extent(graph.tags, d => d.values.length))
-  .rangeRound([7, 100]);
+  .rangeRound([7, 150]);
 
  var compGraph = computeCompGraph(graph.nodes, graph.edges, 3);
  compGraph.nodes.forEach(c => {
@@ -577,7 +612,6 @@ function updateCoreView(simulation) {
 
  var zh = zoomHandler(svg);
 
-
  var dummyData = simulation.nodes().filter(d => d.dummy);
  console.log("dummyData", dummyData);
  var dummy = svg.selectAll(".dummy").data(dummyData, d => d.id);
@@ -649,7 +683,8 @@ function updateCoreView(simulation) {
  compMerge.select("circle")
   // transition not working here
   // .transition(1000)
-  .attr("r", d => d.r);
+  .attr("r", d => d.r)
+  .on("click", programmaticZoomCircle(zh, svg));
   // .style("opacity", d => d.selected ? 1 : 0.1);
   // .on("click", growComp(simulation));
 
@@ -672,14 +707,14 @@ function updateCoreView(simulation) {
   .attr("xlink:href", d => "#circle" + d.id);
 
  textPathEnter.selectAll("tspan")
-  .data(d => d.sets)
+  .data(d => _.uniq(d.sets, s => s.interset), d => d.interset)
   .enter()
   .append("tspan")
   .each(styleTspan);
 
   comp.filter(c => c.selected).select(".label-cont").selectAll("tspan")
     .transition(1000)
-    .attr("font-size", s => s.selected ? wordScale(s.values.length) : 0);
+    .attr("font-size", s => s.selected ? wordScale(s.values.filter(d => d.selected).length) : 0);
 
  simulation.on("tick", function() {
 
@@ -707,7 +742,6 @@ function updateCoreView(simulation) {
    .attr("d", groupPath(simulation.nodes().filter(c => c.selected).filter(d => !d.dummy)))
    .attr("fill", "none");
   // .style("opacity", 0.5)
-  // .on("click", function() {programmaticZoom(zh, svg);});
   //
   zoomHull.call(programmaticZoom(zh, svg));
    svg

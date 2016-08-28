@@ -246,6 +246,7 @@ function draw_marching_squares(callback, c, cell_size = 4, rad=300) {
       var arrayOfArrays = splitSortedBubblePoints(sortedBubblePoints);
 
       g.path = arrayOfArrays;
+      g.interTags = _.intersection(...g.values.map(d => d.tags));
       callback(g);
       // d3.select(".bubble-cont").selectAll(".bubble-"+g.key).remove();
 
@@ -292,7 +293,7 @@ function draw_marching_squares(callback, c, cell_size = 4, rad=300) {
         id = bubblePointsCopy[shortestIndex].id;
 
         sortedBubblePoints.push(bubblePointsCopy[shortestIndex]);
-        bubblePointsCopy.splice(shortestIndex,1); //remove the element
+        bubblePointsCopy.splice(shortestIndex,1); //remove the element;
     }
 
    //or just take the evens to approximate the bubble

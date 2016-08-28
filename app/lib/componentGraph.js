@@ -190,6 +190,9 @@ const computeComponents = function(ns, es, limit) {
     var sets = deriveSets(compNodes);
 
     sets.forEach(s => {
+      var interset = _.intersection(...s.values.map(n => n.tags));
+      console.log("interset", interset);
+      s.interset = interset.join(",");
       s.values = s.values.map(n => {
         var f = compNodes.find(m => m.id === n.id);
         return f;

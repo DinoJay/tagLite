@@ -70,7 +70,7 @@ function traverse(cur, key, nodes) {
 }
 
 function highlightComp(path, oldSim, update) {
-  var range = [0.03, 0.004].concat(d3.range(0, 7).map(() => 0.0015));
+  var range = [0.03, 0.004, 0.0015].concat(d3.range(0, 6).map(() => 0.0008));
   var domain = d3.range(0, 10);
   var isoScale = d3.scaleOrdinal()
                    .domain(domain)
@@ -117,8 +117,8 @@ function highlightComp(path, oldSim, update) {
       c.nodes.forEach(d => {
         if(_.intersection(d.tags, path).length === path.length) {
           d.selected = true;
-          d.width = d.initW + 20 * path.length;
-          d.height = d.initH + 20 * path.length;
+          d.width = d.initW + 15 * path.length;
+          d.height = d.initH + 15 * path.length;
         }
       });
       c.selected = true;
@@ -240,6 +240,8 @@ function tagListCreate(nodes, cont, sim, coreUpdate) {
       // maxBarWidth = width * 0.8;
 
   d3.select(".tag-list")
+    .style("height", "800px")
+    .style("overflow", "scroll")
     .insert("div", ":first-child")
     .attr("class", "view-name")
     .style("position", "relative")
