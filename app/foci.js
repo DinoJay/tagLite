@@ -210,10 +210,13 @@ function runForce() {
     if (link.cut) {
       var s = link.source = nodes[link.source],
           t = link.target = nodes[link.target],
+          sTags = s.sets.reduce((acc, d) => acc.concat(d.intersetArray)),
+          tTags = t.sets.reduce((acc, d) => acc.concat(d.intersetArray)),
+          is = _.intersection(sTags, tTags),
           dummy = {
             "__key__": s.__key__ + t.__key__ + "dummy",
             dummy: true,
-            interSet: link.interSet,
+            interset: is,
             src: s,
             tgt: t,
             r: 30
@@ -226,6 +229,7 @@ function runForce() {
     }
   });
 
+  console.log("ISSS");
   newLinks = newLinks.concat(links.filter(l => !l.cut));
 
 

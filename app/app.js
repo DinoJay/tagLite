@@ -23,8 +23,8 @@ const circleSize = d3.scaleLinear();
 const LABEL_OFFSET = 40;
 const DUMMYNODE_SIZE = 5;
 
-var WIDTH = window.innerWidth * 2/3;
-var HEIGHT = 800; //window.innerHeight;
+var WIDTH = window.innerWidth * 2/3 - 20;
+var HEIGHT = window.innerHeight;
 
 const DOC_WIDTH = 4;
 const DOC_HEIGHT = 6;
@@ -625,11 +625,24 @@ function updateCoreView(simulation) {
   .attr("r", d => d.r)
   .attr("marker-end", "url(#end)");
 
+ dummyEnter.append("title").text(d => d.interSet ? d.interSet.join(",") : "test");
+ console.log("dummyData", dummyEnter.data());
  var dummyMerge = dummyEnter.merge(dummy);
 
  dummyMerge
+   .on("click", d => {
+     if (!d.focus) {
+       d.focus = d.tgt;
+       programmaticZoomCircle(zh, svg)(d.tgt);
+     }
+     else {
+       d.focus = null;
+       programmaticZoomCircle(zh, svg)(d.src);
+     }
+   })
    .select("circle")
-   .style("opacity", d => d.src.selected && d.tgt.selected ? 1 : 0.1);
+   .style("opacity", d => d.src.selected && d.tgt.selected ? 1 : 0.1)
+    .on("click", programmaticZoomCircle(zh, svg));
 
  dummy.exit().remove();
 

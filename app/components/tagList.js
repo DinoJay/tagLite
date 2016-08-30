@@ -240,7 +240,7 @@ function tagListCreate(nodes, cont, sim, coreUpdate) {
       // maxBarWidth = width * 0.8;
 
   d3.select(".tag-list")
-    .style("height", "800px")
+    .style("height", window.innerHeight + "px")
     .style("overflow", "scroll")
     .insert("div", ":first-child")
     .attr("class", "view-name")

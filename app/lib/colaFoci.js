@@ -1,5 +1,6 @@
 import * as d3 from "d3";
 import cola from "webcola";
+import _ from "lodash";
 
 function runColaForce() {
   // var center = this._size.map(d => d/2);
@@ -77,10 +78,13 @@ function links(arg) {
   links.forEach(link => {
       var s = link.source = nodes[link.source],
           t = link.target = nodes[link.target],
+          sTags = s.sets.reduce((acc, d) => acc.concat(d.intersetArray), []),
+          tTags = t.sets.reduce((acc, d) => acc.concat(d.intersetArray), []),
+          is = _.intersection(sTags, tTags),
           dummy = {
             id: s.id + t.id + "dummy",
             dummy: true,
-            interSet: link.interSet,
+            interSet: is,
             src: s,
             tgt: t,
             r: this._dummyRad,
