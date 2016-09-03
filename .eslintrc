@@ -25,13 +25,16 @@
     "extends": "eslint:recommended",
     "ecmaFeatures": {
         "jsx": true,
-        "experimentalObjectRestSpread": true,
-        "modules": true
+        "experimentalObjectRestSpread": true
     },
     "globals": {
       "require": true
     },
     "plugins": [
         "react"
-    ]
+    ],
+    parserOptions: {
+        sourceType: "module",
+        ecmaVersion: 6
+    }
 }

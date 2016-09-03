@@ -107,34 +107,6 @@ var convert_edgelist_to_adjlist = function(vertices, edgelist) {
   return adjlist;
 };
 
-var convert_edgelist_to_adjlist = function(vertices, edgelist) {
-  var adjlist = {};
-  var i, len, pair, u, v;
-  for (i = 0, len = edgelist.length; i < len; i += 1) {
-    pair = edgelist[i];
-    u = pair[0];
-    v = pair[1];
-    // if (vertices.indexOf(u) === -1 || vertices.indexOf(v) === -1) continue;
-    if (adjlist[u]) {
-      // append vertex v to edgelist of vertex u
-      adjlist[u].push(v);
-    } else {
-      // vertex u is not in adjlist, create new adjacency list for it
-      adjlist[u] = [v];
-    }
-    // two way
-    if (adjlist[v]) {
-      adjlist[v].push(u);
-    } else {
-      adjlist[v] = [u];
-    }
-  }
-  vertices.forEach(v => {
-    if (!adjlist.hasOwnProperty(v)) adjlist[v] = [];
-  });
-  return adjlist;
-};
-
 function outLinks(a, nodes, linkedByIndex) {
   var links = [];
   // if (!a.index) console.log("aindex", a);
@@ -148,12 +120,12 @@ function outLinks(a, nodes, linkedByIndex) {
 var isCutEdge = (l, nodes, linkedByIndex, maxDepth) => {
   var tgt = nodes[l.target];
   var targetDeg = outLinks(tgt, nodes, linkedByIndex).length;
-  return l.level % maxDepth === 0 && targetDeg > 0;
+  return l.level % maxDepth === 0 && targetDeg > 0 && tgt.nodes.length > 0;
 };
 
 const computeComponents = function(ns, es, limit) {
   var nodes = _.cloneDeep(ns),
-      edges = _.cloneDeep(es);
+    edges = _.cloneDeep(es);
 
   var linkedByIndex = {};
   edges.forEach(function(d) {
@@ -204,7 +176,10 @@ const computeComponents = function(ns, es, limit) {
       var src = compNodes.findIndex(c => c.__setKey__ === e.source.__key__);
       var tgt = compNodes.findIndex(c => c.__setKey__ === e.target.__key__);
       if (src !== -1 && tgt !== -1) {
-        acc.push({source: src, target: tgt});
+        acc.push({
+          source: src,
+          target: tgt
+        });
       }
       return acc;
     }, []);
@@ -220,7 +195,7 @@ const computeComponents = function(ns, es, limit) {
       interTags: interTags,
       sets: sets,
       setKeys: sets.map(s => s.id)
-      };
+    };
   });
 
   var cutIndex = {};
@@ -239,7 +214,8 @@ const computeComponents = function(ns, es, limit) {
           if (cutIndex[str]) {
             compLinks.push({
               source: comps.findIndex(c => c.id === src.id),
-              target: comps.findIndex(c => c.id === tgt.id)});
+              target: comps.findIndex(c => c.id === tgt.id)
+            });
           }
         });
       });
@@ -248,7 +224,10 @@ const computeComponents = function(ns, es, limit) {
 
 
 
-  return {nodes: comps, edges: compLinks};
+  return {
+    nodes: comps,
+    edges: compLinks
+  };
 
 };
 export default computeComponents;
