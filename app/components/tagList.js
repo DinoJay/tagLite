@@ -117,8 +117,8 @@ function highlightComp(path, oldSim, update) {
       c.nodes.forEach(d => {
         if(_.intersection(d.tags, path).length === path.length) {
           d.selected = true;
-          d.width = d.initW + 15 * path.length;
-          d.height = d.initH + 15 * path.length;
+          d.width = d.initW + 12 * path.length;
+          d.height = d.initH + 12 * path.length;
         }
       });
       c.selected = true;

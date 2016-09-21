@@ -84,17 +84,13 @@
 	
 	var _polyOffset2 = _interopRequireDefault(_polyOffset);
 	
-	var _tagStream = __webpack_require__(17);
-	
-	var _tagStream2 = _interopRequireDefault(_tagStream);
-	
-	var _marchingSquaresHelpers = __webpack_require__(18);
+	var _marchingSquaresHelpers = __webpack_require__(17);
 	
 	var _marchingSquaresHelpers2 = _interopRequireDefault(_marchingSquaresHelpers);
 	
 	var _utils = __webpack_require__(12);
 	
-	var _colorbrewer = __webpack_require__(19);
+	var _colorbrewer = __webpack_require__(18);
 	
 	var _colorbrewer2 = _interopRequireDefault(_colorbrewer);
 	
@@ -102,42 +98,25 @@
 	
 	function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) newObj[key] = obj[key]; } } newObj.default = obj; return newObj; } }
 	
-	__webpack_require__(21);
+	__webpack_require__(20);
 	
 	var tagList = (0, _tagList2.default)();
 	
-	var timeCloud = (0, _tagStream2.default)();
 	
+	var colorScale = d3.scaleOrdinal().range(_colorbrewer2.default.Dark2[8]);
 	
 	var wordScale = d3.scaleLinear();
 	var circleSize = d3.scaleLinear();
 	var LABEL_OFFSET = 40;
 	var DUMMYNODE_SIZE = 5;
 	
-	var WIDTH = window.innerWidth * 2 / 3 - 20;
+	var WIDTH = window.innerWidth * 2 / 3 - 100;
 	var HEIGHT = window.innerHeight;
 	
 	var DOC_WIDTH = 4;
 	var DOC_HEIGHT = 6;
 	
 	var CORE_Class = ".core.view";
-	
-	function pythag(r, b, coord, radius, w) {
-	  var hyp2 = Math.pow(radius, 2),
-	      strokeWidth = 2;
-	  // r += 1;
-	
-	  // force use of b coord that exists in circle to avoid sqrt(x<0)
-	  b = Math.min(w - r - strokeWidth, Math.max(r + strokeWidth, b));
-	
-	  var b2 = Math.pow(b - radius, 2),
-	      a = Math.sqrt(hyp2 - b2);
-	
-	  // radius - sqrt(hyp^2 - b^2) < coord < sqrt(hyp^2 - b^2) + radius
-	  coord = Math.max(radius - a + r + strokeWidth, Math.min(a + radius - r - strokeWidth, coord));
-	
-	  return coord;
-	}
 	
 	function linkPath(d) {
 	  // Total difference in x and y from source to target
@@ -212,61 +191,6 @@
 	//       .scale(scale));
 	//   }
 	
-	function plotLabels(c, group, i, sets) {
-	  var tp = d3.selectAll(".textPath").filter(function (d) {
-	    return d.id === c.id;
-	  }),
-	      compNode = d3.select(".comp-" + c.id);
-	
-	  tp.selectAll("tspan").remove();
-	  tp.selectAll("tspan").data(sets, function (d) {
-	    return d.key;
-	  }).enter().append("tspan")
-	  //TODO: upd enter
-	  .call(styleTspan);
-	
-	  d3.selectAll(".doc").filter(function (d) {
-	    return c.nodes.map(function (e) {
-	      return e.id;
-	    }).includes(d.id);
-	  }).style("opacity", 0.01);
-	
-	  var ids = group.values.map(function (d) {
-	    return d.id;
-	  });
-	  d3.selectAll(".doc").filter(function (d) {
-	    return ids.includes(d.id);
-	  }).style("opacity", 1);
-	
-	  compNode.selectAll("g").select("path").style("opacity", 0.01);
-	  compNode.selectAll(".bubble" + group.key + i).select("path").style("opacity", 1);
-	}
-	
-	function styleTspan(d) {
-	  d3.select(this).attr("class", "tagLabel").attr("font-size", function (d) {
-	    return wordScale(d.values.length);
-	  }).text(function (d) {
-	    return d.interset + " · ";
-	  }).on("mouseover", function (d) {}).on("mouseout", function (d) {
-	
-	    // d3.selectAll(".bd")
-	    //   .style("stroke-opacity", linkOpacity);
-	  });
-	  // var parent = this.parentNode;
-	  // var tpLen = parent.getComputedTextLength();
-	  // var id = d3.select(parent).data()[0].id;
-	  // console.log("id", id);
-	  // var arc = d3.select("#circle" + id);
-	  // var pathLen = arc.node().getTotalLength();
-	  // console.log("tpLen", tpLen, pathLen);
-	  // if (tpLen > pathLen) {
-	  //   console.log("longer");
-	  //   d3.select(this).text("");
-	  // }
-	}
-	
-	var o = d3.scaleOrdinal().domain(["foo", "bar", "baz"]).range(_colorbrewer2.default.Paired[9]);
-	
 	var hullcurve = d3.line().curve(d3.curveBasisClosed).x(function (d) {
 	  return d.x;
 	}).y(function (d) {
@@ -277,10 +201,6 @@
 	//             .x(d => d.x)
 	//             .y(d => d.y)
 	//             .curve(d3.curveBundle);
-	
-	var fill = function fill(i) {
-	  return d3.schemeCategory10[i];
-	};
 	
 	var groupPath = function groupPath(nodes) {
 	  var fakePoints = [];
@@ -298,12 +218,12 @@
 	
 	function subGraphEnter(c) {
 	  var self = d3.select(this);
-	  var bubbleCont = self.append("g").attr("class", "bc");
+	  self.append("g").attr("class", "bc");
 	  c.sets.forEach(function (s) {
 	    return s.isolevel = 0.030;
 	  });
 	
-	  var linkEnter = self.selectAll(".subLink").data(c.links).enter().append("line").attr("class", "sub-link");
+	  self.selectAll(".subLink").data(c.links).enter().append("line").attr("class", "sub-link");
 	  // .attr("marker-end", "url(#end)");
 	
 	  var docEnter = d3.select(this).selectAll(".doc").data(c.nodes).enter().append("g").attr("class", "doc");
@@ -317,216 +237,120 @@
 	  docEnter.append("title").text(function (d) {
 	    return d.tags.join(",");
 	  });
-	
-	  // c.nodes.forEach(n => {
-	  //   n.vx = Math.floor(Math.random() * c.r * 2);
-	  //   n.vy = Math.floor(Math.random() * c.r * 2);
-	  // });
-	
-	  // c.subSim = d3.forceSimulation(c.nodes)
-	  //               .force("link", d3.forceLink(c.links)
-	  //                 .strength(0.3)
-	  //                 .distance(8)
-	  //               )
-	  // .force("center", d3.forceCenter(c.r, c.r))
-	  // .force("charge", d3.forceManyBody(100))
-	  // .force("innerCircle", innerCircleCollide(c.nodes, c.r))
-	  // .force("collide", d3.forceCollide(d => {
-	  //   return d.width === DOC_WIDTH ? d.width * 1.5 : d.width;
-	  // }).strength(1));
-	  // .alphaMin(0.0);
-	
-	  //   c.subSim.on("tick", function() {
-	  //   // TODO: fix later
-	  //
-	  //   // c.nodes.forEach(d => {
-	  //   //     d.x = pythag(2, d.y, d.x, c.r, c.r * 2);
-	  //   //     d.y = pythag(2, d.x, d.y, c.r, c.r * 2);
-	  //   // });
-	  //   docEnter
-	  //    .attr("transform", d => {
-	  //     return "translate(" + [d.x - d.width / 2, d.y - d.height / 2] + ")";
-	  //    });
-	  //
-	  //   linkEnter
-	  //    .attr("x1", l => l.source.x)
-	  //    .attr("y1", l => l.source.y)
-	  //    .attr("x2", l => l.target.x)
-	  //    .attr("y2", l => l.target.y);
-	  //
-	  //   bubbleCont.selectAll("*").remove();
-	  //
-	  //   marching_squares(set => {
-	  //    // TODO: not running right now
-	  //    // this happens in a for loop
-	  //    bubbleCont
-	  //     .selectAll(".bubble-" + set.key).remove();
-	  //
-	  //    var bubbleGroup = bubbleCont
-	  //     .selectAll(".bubble-" + set.key)
-	  //     .data([set]);
-	  //
-	  //    var bubbleGroupEnter = bubbleGroup.enter()
-	  //     .append("g")
-	  //     .attr("class", "bubble-" + set.key);
-	  //
-	  //    var bubble = bubbleGroupEnter.selectAll("path")
-	  //     .data(d => d.path);
-	  //
-	  //    var bubbleEnter = bubble.enter()
-	  //     .append("path");
-	  //
-	  //    var bubbleMerge = bubbleEnter.merge(bubble);
-	  //
-	  //     bubbleMerge
-	  //     .attr("class", (_, i) => "bubble-" + i + set.key + "bubble")
-	  //     .attr("stroke-linejoin", "round")
-	  //    .attr("opacity", 0.5)
-	  //     .attr("d", d => hullcurve(d))
-	  //     .attr("fill", o(set.key))
-	  //     .style("cursor", "pointer")
-	  //     .on("click", () => bubbleGroupEnter.call(programmaticZoom(0.6)));
-	  //
-	  //   bubble.exit().remove();
-	  //   bubbleGroup.exit().remove();
-	  //
-	  //   }, c); // bigger: 0.0048, 0.024 (with updated bubble points)
-	  //  });
 	}
 	
-	function subGraphUpdate(c) {
-	  var self = d3.select(this);
-	  var bubbleCont = self.select(".bc");
+	function subGraphUpdate(zh, svg) {
+	  return function (c) {
+	    var self = d3.select(this);
+	    var bubbleCont = self.select(".bc");
 	
-	  var link = self.selectAll(".sub-link").style("opacity", function (d) {
-	    return d.selected ? 1 : 0.1;
-	  });
-	
-	  var doc = self.selectAll(".doc");
-	  var t = 500;
-	
-	  doc.select("rect").transition(t).attr("width", function (d) {
-	    return d.width;
-	  }).attr("height", function (d) {
-	    return d.height;
-	  }).style("opacity", function (d) {
-	    return d.selected ? 1 : 0.1;
-	  });
-	
-	  doc.select("image").transition(t).attr("width", function (d) {
-	    return d.width + "px";
-	  }).attr("height", function (d) {
-	    return d.height + "px";
-	  }).style("opacity", function (d) {
-	    return d.selected ? 1 : 0.1;
-	  });
-	
-	  c.subSim = d3.forceSimulation(c.nodes).force("link", d3.forceLink(c.links).strength(0.06).distance(8)).force("center", d3.forceCenter(c.r, c.r))
-	  // .force("charge", d3.forceManyBody(-2))
-	  .force("innerCircle", (0, _utils.innerCircleCollide)(c.nodes, c.r)).force("collide", d3.forceCollide(function (d) {
-	    if (!d.selected) return 0;
-	    return d.width === DOC_WIDTH ? d.width * 1.5 : d.width;
-	  }).strength(1))
-	  // .alpha(1)
-	  .alphaTarget(0.5).alphaMin(0.8);
-	  // c.subSim = d3.forceSimulation(c.nodes)
-	  //               .force("link", d3.forceLink(c.links)
-	  //                 .strength(0.06)
-	  //                 .distance(8)
-	  //               )
-	  //               .force("center", d3.forceCenter(c.r, c.r))
-	  //               .force("innerCircle", innerCircleCollide(c.nodes, c.r))
-	  //               .force("collide", d3.forceCollide(d => {
-	  //                 return d.width === DOC_WIDTH ? d.width * 1.5 : d.width;
-	  //               }).strength(1))
-	  //               .alphaMin(0.6);
-	
-	  c.subSim.on("tick", function () {
-	    // TODO: fix later
-	
-	    doc.attr("transform", function (d) {
-	      return "translate(" + [d.x - d.width / 2, d.y - d.height / 2] + ")";
+	    var link = self.selectAll(".sub-link").style("opacity", function (d) {
+	      return d.selected ? 1 : 0.1;
 	    });
 	
-	    link.attr("x1", function (l) {
-	      return l.source.x;
-	    }).attr("y1", function (l) {
-	      return l.source.y;
-	    }).attr("x2", function (l) {
-	      return l.target.x;
-	    }).attr("y2", function (l) {
-	      return l.target.y;
+	    var doc = self.selectAll(".doc");
+	    var t = 500;
+	
+	    doc.select("rect").transition(t).attr("width", function (d) {
+	      return d.width;
+	    }).attr("height", function (d) {
+	      return d.height;
+	    }).style("opacity", function (d) {
+	      return d.selected ? 1 : 0.1;
 	    });
 	
-	    bubbleCont.selectAll("*").remove();
+	    doc.select("image").transition(t).attr("width", function (d) {
+	      return d.width + "px";
+	    }).attr("height", function (d) {
+	      return d.height + "px";
+	    }).style("opacity", function (d) {
+	      return d.selected ? 1 : 0.1;
+	    });
 	
-	    (0, _marchingSquaresHelpers2.default)(function (set) {
-	      // TODO: not running right now
-	      // this happens in a for loop
-	      bubbleCont.selectAll(".bubble-" + set.key).remove();
+	    c.subSim = d3.forceSimulation(c.nodes).force("link", d3.forceLink(c.links).strength(0.06).distance(8)).force("center", d3.forceCenter(c.r, c.r)).force("innerCircle", (0, _utils.innerCircleCollide)(c.nodes, c.r)).force("collide", d3.forceCollide(function (d) {
+	      if (!d.selected) return 0;
+	      return d.width === DOC_WIDTH ? d.width * 2 : d.width;
+	    }).strength(1))
+	    // .alpha(1)
+	    .alphaTarget(0.5).alphaMin(0.8);
 	
-	      var bubbleGroup = bubbleCont.selectAll(".bubble-" + set.key).data([set]);
+	    c.subSim.on("tick", function () {
+	      // TODO: fix later
 	
-	      var bubbleGroupEnter = bubbleGroup.enter().append("g").attr("class", "bubble-" + set.key);
-	
-	      var bubble = bubbleGroupEnter.selectAll("path").data(function (d) {
-	        return d.path;
+	      doc.attr("transform", function (d) {
+	        return "translate(" + [d.x - d.width / 2, d.y - d.height / 2] + ")";
 	      });
 	
-	      var bubbleEnter = bubble.enter().append("path");
-	
-	      var bubbleMerge = bubbleEnter.merge(bubble);
-	
-	      bubbleMerge.attr("class", function (_, i) {
-	        return "bubble-" + i + set.key + "bubble";
-	      }).attr("stroke-linejoin", "round").attr("opacity", 0.1).attr("d", function (d) {
-	        return hullcurve(d);
-	      }).attr("fill", o(set.key)).style("cursor", "pointer").style("opacity", 0.3)
-	      // .on("click", function() {programmaticZoom(zh, svg);});
-	      .on("click", function () {
-	        return bubbleGroupEnter.call(programmaticZoom(zh, 0.6));
-	      }).on("mouseover", function () {
-	        var parent = d3.select(self.node().parentNode);
-	        var labelCont = parent.select(".label-cont");
-	        d3.select(this).style("opacity", 1);
-	        var tspan = labelCont.select("text").select("textPath").selectAll("tspan");
-	        tspan.transition(1000).attr("font-size", function (d) {
-	          return d.interset !== set.interset ? 0 : wordScale(d.values.filter(function (d) {
-	            return d.selected;
-	          }).length);
-	        });
-	        // d3.select(this).style("fill", "blue");
-	        // d3.select(this).attr("opacity", 1);
-	        //
-	        // var tp = d3.select(".label-cont-" + c.id);
-	        // var sets = c.sets.filter(d => group.interTags.includes(d.key));
-	        // console.log("sets", sets);
-	        // plotLabels(c, group, i, sets);
-	      }).on("mouseout", function () {
-	        d3.select(this).style("opacity", 0.3);
-	        var parent = d3.select(self.node().parentNode);
-	        var labelCont = parent.select(".label-cont");
-	        var tspan = labelCont.select("text").select("textPath").selectAll("tspan");
-	        tspan.transition(1000).attr("font-size", function (d) {
-	          return wordScale(d.values.filter(function (d) {
-	            return d.selected;
-	          }).length);
-	        });
-	        // d3.select(this).transition(200).style("opacity", 1);
-	        // d3.select(this).attr("opacity", 1);
-	        //
-	        // var tp = d3.select(".label-cont-" + c.id);
-	        // var sets = c.sets.filter(d => group.interTags.includes(d.key));
-	        // console.log("sets", sets);
-	        // plotLabels(c, group, i, sets);
+	      link.attr("x1", function (l) {
+	        return l.source.x;
+	      }).attr("y1", function (l) {
+	        return l.source.y;
+	      }).attr("x2", function (l) {
+	        return l.target.x;
+	      }).attr("y2", function (l) {
+	        return l.target.y;
 	      });
-	      // .on("click", () => bubbleGroupEnter.call(programmaticZoom(0.6)));
 	
-	      bubble.exit().remove();
-	      bubbleGroup.exit().remove();
-	    }, c); // bigger: 0.0048, 0.024 (with updated bubble points)
-	  });
-	  //  subSim.on("end", function() {});
+	      bubbleCont.selectAll("*").remove();
+	
+	      (0, _marchingSquaresHelpers2.default)(function (set) {
+	        // TODO: not running right now
+	        // this happens in a for loop
+	        bubbleCont.selectAll(".bubble-" + set.key).remove();
+	
+	        var bubbleGroup = bubbleCont.selectAll(".bubble-" + set.key).data([set]);
+	
+	        var bubbleGroupEnter = bubbleGroup.enter().append("g").attr("class", "bubble-" + set.key);
+	
+	        var bubble = bubbleGroupEnter.selectAll("path").data(function (d) {
+	          return d.path;
+	        });
+	
+	        var bubbleEnter = bubble.enter().append("path");
+	
+	        var bubbleMerge = bubbleEnter.merge(bubble);
+	
+	        bubbleMerge.attr("class", "bubble-" + set.key).attr("stroke-linejoin", "round").attr("d", function (d) {
+	          return hullcurve(d);
+	        }).attr("fill", colorScale(set.key)).style("cursor", "pointer").style("opacity", c.selected ? 0.3 : 0.01)
+	        // .on("click", function() {programmaticZoom(zh, svg);});
+	        .on("click", function () {
+	          return programmaticZoomCircle(zh, svg)(c);
+	        }).on("mouseover", function () {
+	          bubbleCont.selectAll("path").style("opacity", 0.3);
+	          bubbleCont.selectAll(".bubble-" + set.key).style("opacity", 1);
+	          console.log("set", set);
+	          var parent = d3.select(self.node().parentNode);
+	          var labelCont = parent.select(".label-cont");
+	          var tspan = labelCont.select("text").select("textPath").selectAll("tspan");
+	          tspan.transition(1000).attr("font-size", function (d) {
+	            return set.intersetArray.includes(d.key) ? wordScale(d.values.filter(function (d) {
+	              return d.selected;
+	            }).length) : 0;
+	          });
+	        }).on("mouseout", function () {
+	          bubbleCont.selectAll("path").style("opacity", 0.3);
+	          var parent = d3.select(self.node().parentNode);
+	          var labelCont = parent.select(".label-cont");
+	
+	          var tspan = labelCont.select("text").select("textPath").selectAll("tspan");
+	
+	          tspan.transition(1000).attr("font-size", function (d) {
+	            return wordScale(d.values.filter(function (d) {
+	              return d.selected;
+	            }).length);
+	          }).text(function (d) {
+	            return d.key + " •";
+	          });
+	        });
+	        // .on("click", () => bubbleGroupEnter.call(programmaticZoom(0.6)));
+	
+	        bubble.exit().remove();
+	        bubbleGroup.exit().remove();
+	      }, c); // bigger: 0.0048, 0.024 (with updated bubble points)
+	    });
+	    //  subSim.on("end", function() {});
+	  };
 	}
 	
 	function createCoreView(graph) {
@@ -535,6 +359,10 @@
 	  wordScale.domain(d3.extent(graph.tags, function (d) {
 	    return d.values.length;
 	  })).rangeRound([7, 150]);
+	
+	  colorScale.domain(graph.tags.map(function (d) {
+	    return d.id;
+	  }));
 	
 	  var compGraph = (0, _componentGraph2.default)(graph.nodes, graph.edges, 3);
 	  compGraph.nodes.forEach(function (c) {
@@ -551,7 +379,7 @@
 	    });
 	  });
 	  // var ext = d3.extent(compGraph.nodes.map(d => d.nodes.length));
-	  circleSize.domain([1, 100]).rangeRound([30, 100]);
+	  circleSize.domain([1, 100]).rangeRound([30, 150]);
 	
 	  compGraph.nodes.forEach(function (n) {
 	    n.initR = circleSize(n.nodes.length);
@@ -564,7 +392,10 @@
 	  .iterations([10, 10, 10]).start();
 	
 	  var svg = d3.select(CORE_Class).select("svg");
+	
 	  var g = svg.attr("width", WIDTH).attr("height", HEIGHT).append("g").attr("overflow", "hidden");
+	
+	  g.append("rect").attr("width", WIDTH).attr("height", HEIGHT).style("opacity", 0);
 	
 	  var cont = d3.select(CORE_Class);
 	
@@ -646,16 +477,110 @@
 	  console.log("dummyData", dummyEnter.data());
 	  var dummyMerge = dummyEnter.merge(dummy);
 	
-	  dummyMerge.on("click", function (d) {
-	    if (!d.focus) {
-	      d.focus = d.tgt;
-	      programmaticZoomCircle(zh, svg)(d.tgt);
-	    } else {
-	      d.focus = null;
-	      programmaticZoomCircle(zh, svg)(d.src);
-	    }
-	  }).select("circle").style("opacity", function (d) {
+	  dummyMerge.style("opacity", function (d) {
 	    return d.src.selected && d.tgt.selected ? 1 : 0.1;
+	  }).on("click", function (d) {
+	    d3.select("#part-zoom-hull").remove();
+	    console.log("mouseover");
+	
+	    var zoomHull = svg.insert("path", ":first-child").attr("class", "hull").attr("id", "part-zoom-hull").attr("d", groupPath([d.src, d.tgt])).attr("fill", "none");
+	
+	    zoomHull.call(programmaticZoom(zh, svg));
+	  }).on("mouseover", function (d) {
+	    svg.selectAll(".comp").transition(1000).style("opacity", function (e) {
+	      return e.id === d.src.id || e.id === d.tgt.id ? 1 : 0.1;
+	    });
+	
+	    svg.selectAll(".dummy").transition(1000).style("opacity", function (e) {
+	      return e.id === d.id ? 1 : 0.1;
+	    });
+	
+	    svg.selectAll(".link").transition(1000).style("opacity", function (l) {
+	      return l.target.id === d.id || l.source.id === d.id ? 1 : 0.1;
+	    });
+	
+	    var srcComp = d3.selectAll("#comp" + d.src.id);
+	    var tgtComp = d3.selectAll("#comp" + d.tgt.id);
+	
+	    var labelContSrc = srcComp.select(".label-cont");
+	    var tspanSrc = labelContSrc.select("text").select("textPath").selectAll("tspan");
+	
+	    tspanSrc.transition(1000).attr("font-size", function (e) {
+	      return d.interSet.includes(e.key) ? wordScale(e.values.filter(function (d) {
+	        return d.selected;
+	      }).length) : 0;
+	    });
+	
+	    var labelContTgt = tgtComp.select(".label-cont");
+	    var tspanTgt = labelContTgt.select("text").select("textPath").selectAll("tspan");
+	
+	    tspanTgt.transition(1000).attr("font-size", function (e) {
+	      return d.interSet.includes(e.key) ? wordScale(e.values.filter(function (d) {
+	        return d.selected;
+	      }).length) : 0;
+	    });
+	
+	    srcComp.select(".bc").selectAll("g").style("opacity", function (e) {
+	      return d.interSet.includes(e.key) ? 1 : 0.1;
+	    });
+	    tgtComp.select(".bc").selectAll("g").style("opacity", function (e) {
+	      return d.interSet.includes(e.key) ? 1 : 0.1;
+	    });
+	    // console.log("gs", srcComp.select(".bc").selectAll("g").data(), d.interSet);
+	    srcComp.select(".node-cont").selectAll(".doc").style("opacity", function (e) {
+	      return _lodash2.default.intersection(e.tags, d.interSet).length > 0 ? 1 : 0.1;
+	    });
+	    tgtComp.select(".node-cont").selectAll(".doc").style("opacity", function (e) {
+	      return _lodash2.default.intersection(e.tags, d.interSet).length > 0 ? 1 : 0.1;
+	    });
+	  }).on("mouseout", function (d) {
+	    svg.selectAll(".comp").transition(1000).style("opacity", function (d) {
+	      return d.selected ? 1 : 0.1;
+	    });
+	    svg.selectAll(".dummy").transition(1000).style("opacity", 1);
+	
+	    svg.selectAll(".link").transition(1000).style("opacity", function (l) {
+	      var dummy = l.source.dummy ? l.source : l.target;
+	      return dummy.src.selected && dummy.tgt.selected ? 1 : 0.1;
+	    });
+	
+	    var srcComp = d3.selectAll("#comp" + d.src.id);
+	    var tgtComp = d3.selectAll("#comp" + d.tgt.id);
+	
+	    var labelCont = srcComp.select(".label-cont");
+	    var tspan = labelCont.select("text").select("textPath").selectAll("tspan");
+	
+	    tspan.transition(1000).attr("font-size", function (e) {
+	      return wordScale(e.values.filter(function (d) {
+	        return d.selected;
+	      }).length);
+	    });
+	
+	    var labelContTgt = tgtComp.select(".label-cont");
+	    var tspanTgt = labelContTgt.select("text").select("textPath").selectAll("tspan");
+	
+	    tspanTgt.transition(1000).attr("font-size", function (e) {
+	      return wordScale(e.values.filter(function (d) {
+	        return d.selected;
+	      }).length);
+	    });
+	
+	    srcComp.select(".bc").selectAll("g").style("opacity", 1);
+	    tgtComp.select(".bc").selectAll("g").style("opacity", 1);
+	
+	    srcComp.select(".node-cont").selectAll(".doc").style("opacity", 1);
+	
+	    tgtComp.select(".node-cont").selectAll(".doc").style("opacity", 1);
+	  }).select("circle").on("mouseover", function () {
+	    svg.selectAll(".comp").style("opacity", function (d) {
+	      return d.selected ? 1 : 0.1;
+	    });
+	    svg.selectAll(".dummy").style("opacity", 1);
+	
+	    svg.selectAll(".link").style("opacity", function (l) {
+	      var dummy = l.source.dummy ? l.source : l.target;
+	      return dummy.src.selected && dummy.tgt.selected ? 1 : 0.1;
+	    });
 	  }).on("click", programmaticZoomCircle(zh, svg));
 	
 	  dummy.exit().remove();
@@ -663,7 +588,7 @@
 	  var link = svg.selectAll(".link").data(simulation.force("link").links(), function (d) {
 	    return d.source.id + d.target.id;
 	  });
-	  // TODO: where are the labels?
+	
 	  var linkEnter = link.enter().append("path").attr("class", "link");
 	
 	  var linkMerge = linkEnter.merge(link);
@@ -679,7 +604,9 @@
 	    return d.id;
 	  });
 	
-	  var compEnter = comp.enter().append("g").attr("class", "comp");
+	  var compEnter = comp.enter().append("g").attr("class", "comp").attr("id", function (d) {
+	    return "comp" + d.id;
+	  });
 	
 	  compEnter.append("circle").attr("fill", "white");
 	
@@ -691,7 +618,7 @@
 	
 	  var compMerge = compEnter.merge(comp);
 	
-	  compMerge.selectAll(".node-cont").each(subGraphUpdate).attr("transform", function (c) {
+	  compMerge.selectAll(".node-cont").each(subGraphUpdate(zh, svg)).attr("transform", function (c) {
 	    return "translate(" + [-c.r, -c.r] + ")";
 	  });
 	
@@ -725,13 +652,14 @@
 	    return "#circle" + d.id;
 	  });
 	
+	  console.log("compEnter", textPathEnter.data());
 	  textPathEnter.selectAll("tspan").data(function (d) {
-	    return _lodash2.default.uniq(d.sets, function (s) {
-	      return s.interset;
-	    });
-	  }, function (d) {
-	    return d.interset;
-	  }).enter().append("tspan").each(styleTspan);
+	    return d.sets;
+	  }).enter().append("tspan").attr("class", "tagLabel").attr("font-size", function (d) {
+	    return wordScale(d.values.length);
+	  }).text(function (d) {
+	    return d.id + " •";
+	  });
 	
 	  comp.filter(function (c) {
 	    return c.selected;
@@ -742,7 +670,6 @@
 	  });
 	
 	  simulation.on("tick", function () {
-	
 	    dummyMerge.attr("transform", function (d) {
 	      return "translate(" + [d.x, d.y] + ")";
 	    });
@@ -48084,34 +48011,6 @@
 	  return adjlist;
 	};
 	
-	var convert_edgelist_to_adjlist = function convert_edgelist_to_adjlist(vertices, edgelist) {
-	  var adjlist = {};
-	  var i, len, pair, u, v;
-	  for (i = 0, len = edgelist.length; i < len; i += 1) {
-	    pair = edgelist[i];
-	    u = pair[0];
-	    v = pair[1];
-	    // if (vertices.indexOf(u) === -1 || vertices.indexOf(v) === -1) continue;
-	    if (adjlist[u]) {
-	      // append vertex v to edgelist of vertex u
-	      adjlist[u].push(v);
-	    } else {
-	      // vertex u is not in adjlist, create new adjacency list for it
-	      adjlist[u] = [v];
-	    }
-	    // two way
-	    if (adjlist[v]) {
-	      adjlist[v].push(u);
-	    } else {
-	      adjlist[v] = [u];
-	    }
-	  }
-	  vertices.forEach(function (v) {
-	    if (!adjlist.hasOwnProperty(v)) adjlist[v] = [];
-	  });
-	  return adjlist;
-	};
-	
 	function outLinks(a, nodes, linkedByIndex) {
 	  var links = [];
 	  // if (!a.index) console.log("aindex", a);
@@ -48124,7 +48023,7 @@
 	var isCutEdge = function isCutEdge(l, nodes, linkedByIndex, maxDepth) {
 	  var tgt = nodes[l.target];
 	  var targetDeg = outLinks(tgt, nodes, linkedByIndex).length;
-	  return l.level % maxDepth === 0 && targetDeg > 0;
+	  return l.level % maxDepth === 0 && targetDeg > 0 && tgt.nodes.length > 0;
 	};
 	
 	var computeComponents = function computeComponents(ns, es, limit) {
@@ -48202,7 +48101,10 @@
 	        return c.__setKey__ === e.target.__key__;
 	      });
 	      if (src !== -1 && tgt !== -1) {
-	        acc.push({ source: src, target: tgt });
+	        acc.push({
+	          source: src,
+	          target: tgt
+	        });
 	      }
 	      return acc;
 	    }, []);
@@ -48243,14 +48145,18 @@
 	              }),
 	              target: comps.findIndex(function (c) {
 	                return c.id === tgt.id;
-	              }) });
+	              })
+	            });
 	          }
 	        });
 	      });
 	    });
 	  });
 	
-	  return { nodes: comps, edges: compLinks };
+	  return {
+	    nodes: comps,
+	    edges: compLinks
+	  };
 	};
 	exports.default = computeComponents;
 
@@ -48410,8 +48316,8 @@
 	      c.nodes.forEach(function (d) {
 	        if (_lodash2.default.intersection(d.tags, path).length === path.length) {
 	          d.selected = true;
-	          d.width = d.initW + 15 * path.length;
-	          d.height = d.initH + 15 * path.length;
+	          d.width = d.initW + 12 * path.length;
+	          d.height = d.initH + 12 * path.length;
 	        }
 	      });
 	      c.selected = true;
@@ -49340,442 +49246,6 @@
 	  value: true
 	});
 	
-	var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"]) _i["return"](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError("Invalid attempt to destructure non-iterable instance"); } }; }();
-	
-	exports.default = function () {
-	  return new d3TimeCloud();
-	};
-	
-	var _d2 = __webpack_require__(5);
-	
-	var d3 = _interopRequireWildcard(_d2);
-	
-	var _utils = __webpack_require__(12);
-	
-	var _lodash = __webpack_require__(6);
-	
-	var _lodash2 = _interopRequireDefault(_lodash);
-	
-	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-	
-	function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) newObj[key] = obj[key]; } } newObj.default = obj; return newObj; } }
-	
-	function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } else { return Array.from(arr); } }
-	// import brewer from "colorbrewer";
-	
-	
-	// import d3_hierarchy from "d3-hierarchy";
-	// import * as d3_force from "d3-force";
-	
-	// "2016/04/16 10:50:21 +0000" var format = d3.time.format("%m/%d/%y ");
-	
-	// var timeMap = d3.map({day: d3.timeDay, month: d3.timeMonth, year: d3.timeYear})
-	//
-	//
-	
-	var colors = ["#66cdff", "#79c8ff", "#8ac4ff", "#9bbdff", "#a7b8ff", "#b3b3ff", "#beaeff", "#c9a7ff"];
-	// d3.scaleThreshold()
-	//     .range();
-	
-	function findCur(cur, key) {
-	  if (cur.key === key) return cur;
-	  if (cur.children) return cur.children.map(function (c) {
-	    return findCur(c, key);
-	  });
-	}
-	
-	function styleAxis(self) {
-	  self.selectAll("text").attr("transform", function () {
-	    return "translate(" + this.getBBox().height * -2 + "," + this.getBBox().height + ")rotate(-45)";
-	  });
-	  self.selectAll("text").style("text-anchor", "middle");
-	  // .attr("dy", 10);
-	  // .attr("dx", -5);
-	
-	  var ticks = self.selectAll(".tick");
-	  ticks.each(function () {
-	    d3.select(this).select("circle").remove();
-	    d3.select(this).append("circle").attr("r", 4).attr("transform", "translate(8, 0)").attr("fill", "black");
-	  });
-	  ticks.selectAll("line").remove();
-	}
-	
-	function pushNewData(props, state, nextTimeFormat) {
-	  var _state$simData;
-	
-	  var allNewData = prepareData(props.data, nextTimeFormat);
-	  var pushData = allNewData.reduce(function (acc, d) {
-	    var i = state.simData.findIndex(function (old) {
-	      return old.tagKey === d.tagKey && !old.marked;
-	    });
-	    var old = state.simData[i];
-	    if (old) {
-	      old.size = d.size;
-	      old.date = d.date;
-	      old.key = d.key;
-	      old.values = d.values;
-	      old.marked = true;
-	    } else {
-	      d.marked = true;
-	      acc.push(d);
-	    }
-	    return acc;
-	  }, []);
-	
-	  _lodash2.default.remove(state.simData, function (d) {
-	    return !d.marked;
-	  });
-	  var clickedKeys = pushData.filter(function (d) {
-	    return d.clicked;
-	  }).map(function (d) {
-	    return d.tagKey;
-	  });
-	  console.log("clickedKeys", clickedKeys);
-	  pushData.forEach(function (d) {
-	    return d.clicked = clickedKeys.includes(d.tagKey);
-	  });
-	  (_state$simData = state.simData).push.apply(_state$simData, _toConsumableArray(pushData));
-	  state.simData.forEach(function (d) {
-	    return d.marked = false;
-	  });
-	}
-	
-	var timeFormatMap = d3.map({
-	  year: { key: "year", nextKey: "month", prevKey: "year", format: d3.timeYear },
-	  month: { key: "month", nextKey: "week", prevKey: "year", format: d3.timeMonth },
-	  week: { key: "week", nextKey: "day", prevKey: "month", format: d3.timeDay },
-	  day: { key: "day", nextKey: "day", prevKey: "week", format: d3.timeDay }
-	}, function (d) {
-	  return d.key;
-	});
-	
-	var format = d3.timeFormat("%Y/%m/%d %H:%M:%S %Z");
-	
-	var color = d3.scaleOrdinal().range(colors);
-	
-	var height = 300,
-	    width = 1400;
-	var margin = { left: 100, right: 50, top: 0, bottom: 50 };
-	
-	var bundleLine = d3.line();
-	// .curve(d3.curveStepAfter);
-	
-	function prepareData(rawData, time) {
-	
-	  var tags = rawData.map(function (d) {
-	    d.date = (0, _utils.parseTime)(d.created_at);
-	    // console.log("time", format(time(d.date)));
-	    d.width = 8 * 5, d.height = 4 * 5;
-	    d.x = width / 2;
-	    d.y = height / 2;
-	    // d.x = d.x;
-	    // d.y = d.y;
-	    return d;
-	  });
-	
-	  // console.log("tags", tags);
-	  var nestedDateTag = d3.nest().key(function (d) {
-	    return d.key + format(time(d.date));
-	  }).entries(tags);
-	
-	  nestedDateTag.forEach(function (g) {
-	    g.date = new Date(time(g.values[0].date));
-	    g.size = g.values.length;
-	    g.tagKey = g.values[0].key;
-	  });
-	
-	  // console.log("nested", nestedDateTag);
-	  return nestedDateTag;
-	}
-	
-	var dbg = function dbg(d) {
-	  console.log("d", d);
-	  return d;
-	};
-	
-	function create(data, cont, sim, mainUpd) {
-	  cont.selectAll("*").remove();
-	  console.log("TAGLIST", tagList);
-	
-	  data.forEach(function (d) {
-	    return d.clicked = false;
-	  });
-	  cont.append("div").attr("class", "view-name").append("h3").text("TimeCloud").on("click", function () {
-	    return d3.select(".paneOptions").style("left", margin.left + "px").style("top", 450 + "px").style("display", "inline");
-	  });
-	
-	  var paneOptions = cont.append("div").attr("class", "paneOptions");
-	
-	  var times = ["year", "month", "week", "day"];
-	  // var y = d3.scaleBand()
-	  //     .domain(times)
-	  //     .range([0, 200]);
-	
-	  paneOptions.append("h4").text("Aggregate");
-	
-	  paneOptions.append("div").selectAll(".legendButton").data(times).enter().append("input").attr("title", function (d) {
-	    return d;
-	  }).attr("type", "button")
-	  // .attr("class", "legendButton")
-	  .attr("value", function (d) {
-	    return d;
-	  });
-	
-	  var svg = cont.append("svg").attr("width", width).attr("height", height);
-	
-	  var mainG = svg.append("g").attr("class", "main").attr("transform", "translate(" + [0, margin.top] + ")");
-	
-	  mainG.insert("rect", ":first-child")
-	  // append("rect")
-	  .attr("class", "zoom").attr("width", width).attr("height", height).attr("fill", "none");
-	
-	  mainG.append("g")
-	  // TODO: fix translate
-	  .attr("class", "tags");
-	
-	  mainG.append("g").attr("class", "x axis").attr("transform", "translate(" + [0, height - margin.bottom] + ")");
-	
-	  var props = { data: data };
-	  var initTags = prepareData(props.data, d3.timeYear, null);
-	  var simulation = d3.forceSimulation(initTags);
-	  var state = {
-	    time: "year",
-	    xScale: null,
-	    simulation: simulation,
-	    simData: initTags,
-	    k: 1
-	  };
-	  state.update = mainUpd;
-	  state.tagList = tagList;
-	  state.sim = sim;
-	  update(props, state);
-	}
-	
-	function update(props, state) {
-	  var time = timeFormatMap.get(state.time),
-	      nextTime = timeFormatMap.get(time.nextKey),
-	      prevTime = timeFormatMap.get(time.prevKey),
-	      simulation = state.simulation,
-	      xScale = state.xScale;
-	
-	  // console.log("time", time.key);
-	  var wordScale = d3.scaleLinear().domain(d3.extent(simulation.nodes(), function (d) {
-	    return d.size;
-	  })).rangeRound([7, 30]);
-	
-	  var _d3$extent = d3.extent(simulation.nodes(), function (d) {
-	    return d.date;
-	  });
-	
-	  var _d3$extent2 = _slicedToArray(_d3$extent, 2);
-	
-	  var t1 = _d3$extent2[0];
-	  var t2 = _d3$extent2[1];
-	  // console.log("t1", t1);
-	  // console.log("t2", t2);
-	
-	  var t0 = time.format.offset(t1, -1);
-	  var t3 = time.format.offset(t2, +1);
-	  // console.log("t2", t1);
-	  // console.log("t3", t2);
-	  xScale = d3.scaleTime().domain([t0, t3]).range([margin.left, width - margin.right]);
-	  // .range([t0, t3].map(d3.scaleTime()
-	  //   .domain([t1, t2])
-	  //   .range([margin.left, width - margin.right]))
-	  // );
-	  // xScale = d3.scaleTime().domain([Date.UTC(2001, 0, 1), Date.UTC(2002, 0, 1)]).range([margin.left, width - margin.right]),
-	  // console.log("xScale domain", xScale.domain());
-	
-	  var xAxis = d3.axisBottom().scale(xScale).ticks(time.format).tickSize(12).tickPadding(-2);
-	
-	  var mainG = d3.select("g.main");
-	
-	  mainG.call(d3.zoom().scaleExtent([-1, 10]).translateExtent([[-50, -50], [width, height]]).duration(1000).on("zoom", zoomed)).on("dblclick.zoom", null).on("click.zoom", null);
-	
-	  var gTag = mainG.select("g.tags");
-	  // .attr("transform", "translate(" + [0, margin.top] + ")");
-	
-	  d3.select(".x.axis").call(xAxis).call(styleAxis);
-	
-	  var tag = gTag.selectAll(".tag").data(simulation.nodes(), function (d) {
-	    return d.key;
-	  });
-	
-	  var tagEnterG = tag.enter().append("g").attr("class", "tag");
-	
-	  tagEnterG.append("rect");
-	  // .style("opacity", 0.3);
-	
-	  tagEnterG.append("text").text(function (d) {
-	    return d.tagKey;
-	  });
-	
-	  tag.exit().remove();
-	
-	  var tagEnterUpdate = tagEnterG.merge(tag);
-	
-	  tagEnterUpdate.select("rect").attr("fill", function (d) {
-	    return d.clicked ? "yellow" : "white";
-	  });
-	
-	  tagEnterUpdate.style("font-size", function (d) {
-	    return wordScale(d.size) + "px";
-	  });
-	
-	  tagEnterUpdate.select("text").each(function (d) {
-	    var self = d3.select(this);
-	    var bbox = self.node().getBBox();
-	    d.width = bbox.width;
-	    d.height = bbox.height;
-	  }).on("click", function (d) {
-	    var rect = d3.select(this.parentNode).select("rect");
-	
-	    if (!d.clicked) {
-	      d.clicked = true;
-	      console.log("time link", d);
-	      // TODO
-	      rect.attr("fill", "rgb(255, 165, 0)");
-	      // var timeLink = d3.select("g.tags").selectAll(".time-link")
-	      //                 .data(d.values)
-	      //                 .enter()
-	      //                 .insert("path", ":first-child")
-	      //                 .attr("stroke", "red")
-	      //                 .attr("fill", "none")
-	      //                 .attr("d", e => {
-	      //                   var a = [
-	      //                     [d.x, d.y],
-	      //                     [xScale(e.date), height - margin.bottom]
-	      //                   ];
-	      //                   return bundleLine(a);
-	      //                 });
-	
-	      var t1 = time.format.offset(d.date, 1);
-	
-	      state.sim.timerange([d.date, t1]);
-	
-	      console.log("d", d);
-	    } else {
-	      d.clicked = false;
-	
-	      rect.attr("fill", null);
-	    }
-	  });
-	
-	  tagEnterUpdate.select("text").attr("dy", function (d) {
-	    return d.height * 3 / 4;
-	  });
-	
-	  tagEnterUpdate.select("rect").attr("width", function (d) {
-	    return d.width;
-	  }).attr("height", function (d) {
-	    return d.height;
-	  });
-	  // var rect = tagEnterUpdate.select("rect");
-	  // var text = tagEnterUpdate.select("text");
-	
-	  // gTag.selectAll("circle")
-	  //   .data(tags)
-	  //   .enter()
-	  //   .append("circle")
-	  //     .attr("r", 3)
-	  //     .attr("cx", d => d.x)
-	  //     .attr("cy", d => d.y)
-	  //     .on("click", d => console.log("d.date", d.date));
-	
-	  simulation.force("y", d3.forceY(height / 2).strength(0.1)).force("x", d3.forceX(function (d) {
-	    return xScale(d.date);
-	  }).strength(0.3)).force("collide", (0, _utils.rectCollide)(simulation.nodes(), 6)).on("tick", function () {
-	    // rect
-	    //   .attr("x", d => d.x - d.width / 2)
-	    //   .attr("y", d => d.y - d.height / 2);
-	
-	    tagEnterUpdate.attr("transform", function (d) {
-	      return "translate(" + [d.x - d.width / 2, d.y - d.height / 2] + ")";
-	    });
-	
-	    // tagEnterG.select("rect").style("fill", "#8ac4ff");
-	
-	    // tag
-	    //   .attr("transform", d => {
-	    //     return "translate(" + [d.x - d.width / 2, d.y - d.height / 2] + ")";
-	    //   })
-	    //   .select("rect").style("fill",  "green");
-	
-	    //
-	    // tag.select("rect")
-	    //   .attr("x", d => d.x - d.width / 2)
-	    //   .attr("y", d => d.y - d.height / 2);
-	    //
-	    // tag.select("text")
-	    //   .attr("x", d => d.x - d.width / 2)
-	    //   .attr("y", d => d.y + d.height / 4);
-	  }).velocityDecay(0.6)
-	  // .alphaDecay(1)
-	  .alpha(0.5);
-	  // .stop();
-	
-	  simulation.restart();
-	
-	  function zoomed() {
-	    if (state.simulation.alpha() > 0.4) return;
-	    if (d3.event.transform.k < state.k) {
-	      console.log("zoom out");
-	      pushNewData(props, state, prevTime.format);
-	      console.log("prevTime", prevTime, "nextTime", prevTime);
-	      simulation.nodes(state.simData);
-	
-	      state.time = prevTime.key;
-	      state.simulation = simulation;
-	      state.simData = state.simData;
-	      state.k = d3.event.transform.k;
-	
-	      update(props, state);
-	    } else {
-	      if (state.time !== "day") {
-	        console.log("zoom in");
-	        pushNewData(props, state, nextTime.format);
-	        simulation.nodes(state.simData);
-	
-	        state.time = nextTime.key;
-	        state.simulation = simulation;
-	        state.simData = state.simData;
-	        state.k = d3.event.transform.k;
-	
-	        update(props, state);
-	      } else {
-	        var newXscale = d3.event.transform.rescaleX(xScale);
-	        d3.select(".x.axis").call(xAxis.scale(newXscale).ticks(d3.timeDay)).call(styleAxis);
-	
-	        simulation.force("x", d3.forceX(function (d) {
-	          return newXscale(d.date);
-	        }).strength(0.3)).force("collide", (0, _utils.rectCollide)(simulation.nodes(), 3));
-	        simulation.alpha(0.4);
-	        simulation.restart();
-	      }
-	    }
-	
-	    // }
-	  }
-	}
-	
-	var d3TimeCloud = function d3TimeCloud() {
-	  return {
-	    create: create,
-	    update: update,
-	    mainUpd: null
-	  };
-	};
-
-/***/ },
-/* 18 */
-/***/ function(module, exports, __webpack_require__) {
-
-	"use strict";
-	
-	Object.defineProperty(exports, "__esModule", {
-	  value: true
-	});
-	
 	var _lodash = __webpack_require__(6);
 	
 	var _lodash2 = _interopRequireDefault(_lodash);
@@ -50101,14 +49571,14 @@
 	exports.default = draw_marching_squares;
 
 /***/ },
-/* 19 */
+/* 18 */
 /***/ function(module, exports, __webpack_require__) {
 
-	module.exports = __webpack_require__(20);
+	module.exports = __webpack_require__(19);
 
 
 /***/ },
-/* 20 */
+/* 19 */
 /***/ function(module, exports, __webpack_require__) {
 
 	var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_RESULT__;// This product includes color specifications and designs developed by Cynthia Brewer (http://colorbrewer.org/).
@@ -50429,16 +49899,16 @@
 
 
 /***/ },
-/* 21 */
+/* 20 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// style-loader: Adds some css to the DOM by adding a <style> tag
 	
 	// load the styles
-	var content = __webpack_require__(22);
+	var content = __webpack_require__(21);
 	if(typeof content === 'string') content = [[module.id, content, '']];
 	// add the styles to the DOM
-	var update = __webpack_require__(27)(content, {});
+	var update = __webpack_require__(26)(content, {});
 	if(content.locals) module.exports = content.locals;
 	// Hot Module Replacement
 	if(false) {
@@ -50455,22 +49925,22 @@
 	}
 
 /***/ },
-/* 22 */
+/* 21 */
 /***/ function(module, exports, __webpack_require__) {
 
-	exports = module.exports = __webpack_require__(23)();
+	exports = module.exports = __webpack_require__(22)();
 	// imports
+	exports.i(__webpack_require__(23), "");
 	exports.i(__webpack_require__(24), "");
-	exports.i(__webpack_require__(25), "");
 	
 	// module
-	exports.push([module.id, ".ticks {\n  font: 10px sans-serif;\n}\n.track,\n.track-inset,\n.track-overlay {\n  stroke-linecap: round;\n}\n.track {\n  stroke: #000;\n  stroke-opacity: 0.3;\n  stroke-width: 10px;\n}\n.track-inset {\n  stroke: #ddd;\n  stroke-width: 8px;\n}\n.track-overlay {\n  pointer-events: stroke;\n  stroke-width: 50px;\n  cursor: crosshair;\n}\n.handle {\n  fill: #fff;\n  stroke: #000;\n  stroke-opacity: 0.5;\n  stroke-width: 1.25px;\n}\n.legendButton {\n  background: #a9e0dc;\n  border: 1px solid #69ADA8;\n  color: #000000;\n  text-align: center;\n  margin: 5px 10px 5px 0px;\n  border-radius: 3px;\n  line-height: 8px;\n  height: 26px;\n  padding-top: 7px;\n  font-weight: 300;\n  font-size: 13px;\n  text-transform: uppercase;\n  font-family: 'Sorts Mill Goudy', serif;\n}\n.legendButton:hover {\n  background: #fffbb2;\n  border-color: #999999;\n  cursor: pointer;\n}\n.legendButton.active {\n  background: #9DDEFF;\n  border-color: #69B8DF;\n  color: #333333;\n}\n.legendButton:active {\n  background: #ffE4A9;\n  border-color: #FFAF00;\n  color: #000000;\n}\n.paneOptions {\n  display: none;\n  height: 280px;\n  width: 450px;\n  padding: 20px;\n  position: absolute;\n  background: white;\n}\n.tipsy {\n  font-size: 10px;\n  position: absolute;\n  padding: 5px;\n  z-index: 100000;\n}\n.tipsy-inner {\n  background-color: #000;\n  color: #FFF;\n  max-width: 200px;\n  padding: 5px 8px 4px 8px;\n  text-align: center;\n}\n/* Rounded corners */\n.tipsy-inner {\n  border-radius: 3px;\n  -moz-border-radius: 3px;\n  -webkit-border-radius: 3px;\n}\n/* Uncomment for shadow */\n/*.tipsy-inner { box-shadow: 0 0 5px #000000; -webkit-box-shadow: 0 0 5px #000000; -moz-box-shadow: 0 0 5px #000000; }*/\n.tipsy-arrow {\n  position: absolute;\n  width: 0;\n  height: 0;\n  line-height: 0;\n  border: 5px dashed #000;\n}\n/* Rules to colour arrows */\n.tipsy-arrow-n {\n  border-bottom-color: #000;\n}\n.tipsy-arrow-s {\n  border-top-color: #000;\n}\n.tipsy-arrow-e {\n  border-left-color: #000;\n}\n.tipsy-arrow-w {\n  border-right-color: #000;\n}\n.tipsy-n .tipsy-arrow {\n  top: 0px;\n  left: 50%;\n  margin-left: -5px;\n  border-bottom-style: solid;\n  border-top: none;\n  border-left-color: transparent;\n  border-right-color: transparent;\n}\n.tipsy-nw .tipsy-arrow {\n  top: 0;\n  left: 10px;\n  border-bottom-style: solid;\n  border-top: none;\n  border-left-color: transparent;\n  border-right-color: transparent;\n}\n.tipsy-ne .tipsy-arrow {\n  top: 0;\n  right: 10px;\n  border-bottom-style: solid;\n  border-top: none;\n  border-left-color: transparent;\n  border-right-color: transparent;\n}\n.tipsy-s .tipsy-arrow {\n  bottom: 0;\n  left: 50%;\n  margin-left: -5px;\n  border-top-style: solid;\n  border-bottom: none;\n  border-left-color: transparent;\n  border-right-color: transparent;\n}\n.tipsy-sw .tipsy-arrow {\n  bottom: 0;\n  left: 10px;\n  border-top-style: solid;\n  border-bottom: none;\n  border-left-color: transparent;\n  border-right-color: transparent;\n}\n.tipsy-se .tipsy-arrow {\n  bottom: 0;\n  right: 10px;\n  border-top-style: solid;\n  border-bottom: none;\n  border-left-color: transparent;\n  border-right-color: transparent;\n}\n.tipsy-e .tipsy-arrow {\n  right: 0;\n  top: 50%;\n  margin-top: -5px;\n  border-left-style: solid;\n  border-right: none;\n  border-top-color: transparent;\n  border-bottom-color: transparent;\n}\n.tipsy-w .tipsy-arrow {\n  left: 0;\n  top: 50%;\n  margin-top: -5px;\n  border-right-style: solid;\n  border-left: none;\n  border-top-color: transparent;\n  border-bottom-color: transparent;\n}\nbody {\n  background: url(" + __webpack_require__(26) + ") repeat top left fixed;\n  background-position-y: 10px;\n  font-family: 'Sorts Mill Goudy', serif;\n}\n.view-name {\n  background: white;\n  display: inline-block;\n  position: absolute;\n  padding: 0px 8px 0px 8px;\n  border-right: thin dashed #85A0A4;\n  border-bottom: thin dashed #85A0A4;\n}\n.view {\n  float: left;\n  border-bottom: thin dashed #85A0A4;\n  border-right: thin dashed #85A0A4;\n  overflow: hidden;\n}\n.link {\n  fill: none;\n  stroke: black;\n  stroke-width: 1.5px;\n}\n.time-cloud {\n  margin-top: 5px;\n  float: left;\n}\nli {\n  cursor: pointer;\n}\n.comp > circle {\n  fill: white;\n  stroke: #777777;\n  stroke-width: 2px;\n  fill-opacity: 0.1;\n}\n.dummy > circle {\n  fill: white;\n  stroke: #777777;\n  stroke-width: 2px;\n  fill-opacity: 0.1;\n}\n.comp > text {\n  font-family: sans-serif;\n  text-anchor: middle;\n  pointer-events: none;\n}\n.link {\n  stroke: #DDD;\n  stroke-width: 4px;\n  marker-end: url(#end-arrow);\n}\n.root {\n  cursor: pointer;\n  fill-opacity: .5;\n  stroke: grey;\n  stroke-width: 1.5px;\n  position: absolute;\n}\n.node rect {\n  cursor: pointer;\n  fill-opacity: .5;\n  stroke: grey;\n  stroke-width: 1.5px;\n}\n.tag rect {\n  cursor: pointer;\n  fill-opacity: .5;\n  stroke-width: 1.5px;\n}\n.node text {\n  font: 10px sans-serif;\n  pointer-events: none;\n}\npath.link {\n  fill: none;\n  stroke: silver;\n  stroke-width: 1.5px;\n}\n.axis {\n  font: 10px sans-serif;\n}\n.axis path,\n.axis line {\n  fill: none;\n  stroke: #000;\n  shape-rendering: crispEdges;\n}\n.axis--x path {\n  display: none;\n}\nbody {\n  font: 10px sans-serif;\n}\n.grid line {\n  stroke: #fff;\n}\n.grid line.minor {\n  stroke-width: .5px;\n}\n.grid text {\n  display: none;\n}\n.axis line {\n  stroke: #000;\n}\n.domain {\n  display: none;\n}\n", ""]);
+	exports.push([module.id, ".ticks {\n  font: 10px sans-serif;\n}\n.track,\n.track-inset,\n.track-overlay {\n  stroke-linecap: round;\n}\n.track {\n  stroke: #000;\n  stroke-opacity: 0.3;\n  stroke-width: 10px;\n}\n.track-inset {\n  stroke: #ddd;\n  stroke-width: 8px;\n}\n.track-overlay {\n  pointer-events: stroke;\n  stroke-width: 50px;\n  cursor: crosshair;\n}\n.handle {\n  fill: #fff;\n  stroke: #000;\n  stroke-opacity: 0.5;\n  stroke-width: 1.25px;\n}\n.legendButton {\n  background: #a9e0dc;\n  border: 1px solid #69ADA8;\n  color: #000000;\n  text-align: center;\n  margin: 5px 10px 5px 0px;\n  border-radius: 3px;\n  line-height: 8px;\n  height: 26px;\n  padding-top: 7px;\n  font-weight: 300;\n  font-size: 13px;\n  text-transform: uppercase;\n  font-family: 'Sorts Mill Goudy', serif;\n}\n.legendButton:hover {\n  background: #fffbb2;\n  border-color: #999999;\n  cursor: pointer;\n}\n.legendButton.active {\n  background: #9DDEFF;\n  border-color: #69B8DF;\n  color: #333333;\n}\n.legendButton:active {\n  background: #ffE4A9;\n  border-color: #FFAF00;\n  color: #000000;\n}\n.paneOptions {\n  display: none;\n  height: 280px;\n  width: 450px;\n  padding: 20px;\n  position: absolute;\n  background: white;\n}\n.tipsy {\n  font-size: 10px;\n  position: absolute;\n  padding: 5px;\n  z-index: 100000;\n}\n.tipsy-inner {\n  background-color: #000;\n  color: #FFF;\n  max-width: 200px;\n  padding: 5px 8px 4px 8px;\n  text-align: center;\n}\n/* Rounded corners */\n.tipsy-inner {\n  border-radius: 3px;\n  -moz-border-radius: 3px;\n  -webkit-border-radius: 3px;\n}\n/* Uncomment for shadow */\n/*.tipsy-inner { box-shadow: 0 0 5px #000000; -webkit-box-shadow: 0 0 5px #000000; -moz-box-shadow: 0 0 5px #000000; }*/\n.tipsy-arrow {\n  position: absolute;\n  width: 0;\n  height: 0;\n  line-height: 0;\n  border: 5px dashed #000;\n}\n/* Rules to colour arrows */\n.tipsy-arrow-n {\n  border-bottom-color: #000;\n}\n.tipsy-arrow-s {\n  border-top-color: #000;\n}\n.tipsy-arrow-e {\n  border-left-color: #000;\n}\n.tipsy-arrow-w {\n  border-right-color: #000;\n}\n.tipsy-n .tipsy-arrow {\n  top: 0px;\n  left: 50%;\n  margin-left: -5px;\n  border-bottom-style: solid;\n  border-top: none;\n  border-left-color: transparent;\n  border-right-color: transparent;\n}\n.tipsy-nw .tipsy-arrow {\n  top: 0;\n  left: 10px;\n  border-bottom-style: solid;\n  border-top: none;\n  border-left-color: transparent;\n  border-right-color: transparent;\n}\n.tipsy-ne .tipsy-arrow {\n  top: 0;\n  right: 10px;\n  border-bottom-style: solid;\n  border-top: none;\n  border-left-color: transparent;\n  border-right-color: transparent;\n}\n.tipsy-s .tipsy-arrow {\n  bottom: 0;\n  left: 50%;\n  margin-left: -5px;\n  border-top-style: solid;\n  border-bottom: none;\n  border-left-color: transparent;\n  border-right-color: transparent;\n}\n.tipsy-sw .tipsy-arrow {\n  bottom: 0;\n  left: 10px;\n  border-top-style: solid;\n  border-bottom: none;\n  border-left-color: transparent;\n  border-right-color: transparent;\n}\n.tipsy-se .tipsy-arrow {\n  bottom: 0;\n  right: 10px;\n  border-top-style: solid;\n  border-bottom: none;\n  border-left-color: transparent;\n  border-right-color: transparent;\n}\n.tipsy-e .tipsy-arrow {\n  right: 0;\n  top: 50%;\n  margin-top: -5px;\n  border-left-style: solid;\n  border-right: none;\n  border-top-color: transparent;\n  border-bottom-color: transparent;\n}\n.tipsy-w .tipsy-arrow {\n  left: 0;\n  top: 50%;\n  margin-top: -5px;\n  border-right-style: solid;\n  border-left: none;\n  border-top-color: transparent;\n  border-bottom-color: transparent;\n}\nbody {\n  background: url(" + __webpack_require__(25) + ") repeat top left fixed;\n  background-position-y: 10px;\n  font-family: 'Sorts Mill Goudy', serif;\n}\n.view-name {\n  background: white;\n  display: inline-block;\n  position: absolute;\n  padding: 0px 8px 0px 8px;\n  border-right: thin dashed #85A0A4;\n  border-bottom: thin dashed #85A0A4;\n}\n.view {\n  float: left;\n  border-bottom: thin dashed #85A0A4;\n  border-right: thin dashed #85A0A4;\n  overflow: hidden;\n}\n.link {\n  fill: none;\n  stroke: black;\n  stroke-width: 1.5px;\n}\n.time-cloud {\n  margin-top: 5px;\n  float: left;\n}\nli {\n  cursor: pointer;\n}\n.comp > circle {\n  fill: white;\n  stroke: #777777;\n  stroke-width: 2px;\n  fill-opacity: 0.1;\n}\n.dummy > circle {\n  cursor: pointer;\n  fill: white;\n  stroke: #777777;\n  stroke-width: 2px;\n  fill-opacity: 0.1;\n}\n.comp > text {\n  font-family: sans-serif;\n  text-anchor: middle;\n  pointer-events: none;\n}\n.link {\n  stroke: #DDD;\n  stroke-width: 4px;\n  marker-end: url(#end-arrow);\n}\n.root {\n  cursor: pointer;\n  fill-opacity: .5;\n  stroke: grey;\n  stroke-width: 1.5px;\n  position: absolute;\n}\n.node rect {\n  cursor: pointer;\n  fill-opacity: .5;\n  stroke: grey;\n  stroke-width: 1.5px;\n}\n.tag rect {\n  cursor: pointer;\n  fill-opacity: .5;\n  stroke-width: 1.5px;\n}\n.node text {\n  font: 10px sans-serif;\n  pointer-events: none;\n}\npath.link {\n  fill: none;\n  stroke: silver;\n  stroke-width: 1.5px;\n}\n.axis {\n  font: 10px sans-serif;\n}\n.axis path,\n.axis line {\n  fill: none;\n  stroke: #000;\n  shape-rendering: crispEdges;\n}\n.axis--x path {\n  display: none;\n}\nbody {\n  font: 10px sans-serif;\n}\n.grid line {\n  stroke: #fff;\n}\n.grid line.minor {\n  stroke-width: .5px;\n}\n.grid text {\n  display: none;\n}\n.axis line {\n  stroke: #000;\n}\n.domain {\n  display: none;\n}\n", ""]);
 	
 	// exports
 
 
 /***/ },
-/* 23 */
+/* 22 */
 /***/ function(module, exports) {
 
 	/*
@@ -50526,10 +49996,10 @@
 
 
 /***/ },
-/* 24 */
+/* 23 */
 /***/ function(module, exports, __webpack_require__) {
 
-	exports = module.exports = __webpack_require__(23)();
+	exports = module.exports = __webpack_require__(22)();
 	// imports
 	
 	
@@ -50540,10 +50010,10 @@
 
 
 /***/ },
-/* 25 */
+/* 24 */
 /***/ function(module, exports, __webpack_require__) {
 
-	exports = module.exports = __webpack_require__(23)();
+	exports = module.exports = __webpack_require__(22)();
 	// imports
 	
 	
@@ -50554,13 +50024,13 @@
 
 
 /***/ },
-/* 26 */
+/* 25 */
 /***/ function(module, exports, __webpack_require__) {
 
 	module.exports = __webpack_require__.p + "8939bf293e12aa837a2b92645724f327.png";
 
 /***/ },
-/* 27 */
+/* 26 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/*

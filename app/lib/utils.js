@@ -1,12 +1,13 @@
 import * as d3 from "d3";
-import _ from "lodash";
+// import _ from "lodash";
+import offsetInterpolate from "./polyOffset.js";
 
 function rectCollide(nodes, strength) {
   return function(alpha) {
     var quadtree = d3.quadtree()
-                     .x(d => d.x)
-                     .y(d => d.y)
-                     .addAll(nodes);
+      .x(d => d.x)
+      .y(d => d.y)
+      .addAll(nodes);
     var padding = 6;
 
     for (var i = 0, n = nodes.length; i < n; ++i) {
@@ -56,21 +57,21 @@ function rectCollide(nodes, strength) {
 }
 
 function pythag(r, b, coord, radius, w) {
- var hyp2 = Math.pow(radius, 2),
-  strokeWidth = 2;
- // r += 1;
+  var hyp2 = Math.pow(radius, 2),
+    strokeWidth = 2;
+  // r += 1;
 
- // force use of b coord that exists in circle to avoid sqrt(x<0)
- b = Math.min(w - r - strokeWidth, Math.max(r + strokeWidth, b));
+  // force use of b coord that exists in circle to avoid sqrt(x<0)
+  b = Math.min(w - r - strokeWidth, Math.max(r + strokeWidth, b));
 
- var b2 = Math.pow((b - radius), 2),
-  a = Math.sqrt(hyp2 - b2);
+  var b2 = Math.pow((b - radius), 2),
+    a = Math.sqrt(hyp2 - b2);
 
- // radius - sqrt(hyp^2 - b^2) < coord < sqrt(hyp^2 - b^2) + radius
- coord = Math.max(radius - a + r + strokeWidth,
-  Math.min(a + radius - r - strokeWidth, coord));
+  // radius - sqrt(hyp^2 - b^2) < coord < sqrt(hyp^2 - b^2) + radius
+  coord = Math.max(radius - a + r + strokeWidth,
+    Math.min(a + radius - r - strokeWidth, coord));
 
- return coord;
+  return coord;
 }
 
 function innerCircleCollide(nodes, r) {
@@ -84,6 +85,7 @@ function innerCircleCollide(nodes, r) {
     }
   };
 }
+
 function textCrop(el, text, width) {
   if (typeof el.getSubStringLength !== "undefined") {
     el.textContent = text;
@@ -92,13 +94,13 @@ function textCrop(el, text, width) {
     el.textContent = text.slice(0, len) + "...";
   } else if (typeof el.getComputedTextLength !== "undefined") {
     while (el.getComputedTextLength() > width) {
-      text = text.slice(0,-1);
+      text = text.slice(0, -1);
       el.textContent = text + "...";
     }
   } else {
     // the last fallback
     while (el.getBBox().width > width) {
-      text = text.slice(0,-1);
+      text = text.slice(0, -1);
       // we need to update the textContent to update the boundary width
       el.textContent = text + "...";
     }
@@ -106,26 +108,130 @@ function textCrop(el, text, width) {
 }
 
 function radialLine(self) {
-    var radius = self.data()[0].r,
-        radiansStart = - 1/2 * Math.PI,
-        radiansEnd = 2 * Math.PI;
+  var radius = self.data()[0].r,
+    radiansStart = -1 / 2 * Math.PI,
+    radiansEnd = 2 * Math.PI;
 
-    var points = 50;
+  var points = 50;
 
-    var angle = d3.scaleLinear()
-        .domain([0, points-1])
-        .range([radiansStart, radiansEnd]);
+  var angle = d3.scaleLinear()
+    .domain([0, points - 1])
+    .range([radiansStart, radiansEnd]);
 
-    var line = d3.radialLine()
-        // .interpolate("basis")
-        // .tension(0)
-        .radius(radius)
-        .angle(function(d, i) { return angle(i); });
+  var line = d3.radialLine()
+    // .interpolate("basis")
+    // .tension(0)
+    .radius(radius)
+    .angle(function(d, i) {
+      return angle(i);
+    });
 
-    self.datum(d3.range(points))
-        .attr("class", "line")
-        .attr("d", line);
+  self.datum(d3.range(points))
+    .attr("class", "line")
+    .attr("d", line);
 }
 
 var parseTime = d3.timeParse("%Y/%m/%d %H:%M:%S %Z");
-export {textCrop, innerCircleCollide, parseTime, rectCollide};
+
+function zoomHandler(svg) {
+  return d3.zoom()
+    .extent(function() {
+      var bbox = d3.select("#zoom-hull").node().getBoundingClientRect();
+      return [
+        [bbox.x, bbox.y],
+        [bbox.x + bbox.width, bbox.y + bbox.height]
+      ];
+    })
+    .scaleExtent([-100, 40])
+    .on("zoom", function() {
+      var translate = [d3.event.transform.x, d3.event.transform.y];
+      var scale = d3.event.transform.k;
+      svg
+        .transition(1000)
+        .attr("transform", "translate(" + translate + ")scale(" + scale + ")");
+    });
+}
+
+function programmaticZoom(zoomHandler, svg, dim) {
+  return function(self) {
+    var offset = 100;
+    var bbox = self.node().getBBox(),
+      dx = bbox.width + offset,
+      dy = bbox.height + offset,
+      x = (bbox.x + bbox.x + bbox.width) / 2,
+      y = (bbox.y + bbox.y + bbox.height) / 2,
+      scale = Math.max(-20,
+        Math.min(2.5, 1 / Math.max(dx / dim.width, dy / dim.height))),
+      translate = [dim.width / 2 - scale * x,
+        dim.height / 2 - scale * y
+      ];
+
+    zoomHandler.transform(svg,
+      d3.zoomIdentity
+      .translate(translate[0], translate[1])
+      .scale(scale));
+  };
+}
+
+function programmaticZoomCircle(zoomHandler, svg, dim) {
+  return function(d) {
+    console.log("d", d);
+    var offset = 50;
+    var dx = d.width + offset,
+      dy = d.height + offset,
+      x = (d.x),
+      y = (d.y),
+      scale = Math.max(-40, Math.min(8, 1 / Math.max(dx / dim.width, dy / dim.height))),
+      translate = [dim.width / 2 - scale * x,
+        dim.height / 2 - scale * y
+      ];
+    console.log(dx, dy, x, y, scale, translate);
+
+    zoomHandler.transform(svg,
+      d3.zoomIdentity
+      .translate(translate[0], translate[1])
+      .scale(scale));
+  };
+}
+// function zoomTo(v) {
+//     var k = diameter / v[2]; view = v;
+//     node.attr("transform", function(d) {
+//       return (d.x - v[0]) * k + "," + (d.y - v[1]) * k + ")"; });
+//
+//     zoomHandler.transform(svg,
+//       d3.zoomIdentity
+//       .translate(translate[0], translate[1])
+//       .scale(scale));
+//   }
+
+var groupPath = function(nodes) {
+  var fakePoints = [];
+  nodes.forEach(function(element) {
+    var offset = element.r;
+    fakePoints = fakePoints.concat([
+      // "0.7071" scale the sine and cosine of 45 degree for corner points.
+      [(element.x), (element.y + offset)],
+      [(element.x + (0.7071 * offset)), (element.y + (0.7071 * offset))],
+      [(element.x + offset), (element.y)],
+      [(element.x + (0.7071 * offset)), (element.y - (0.7071 * offset))],
+      [(element.x), (element.y - offset)],
+      [(element.x - (0.7071 * offset)), (element.y - (0.7071 * offset))],
+      [(element.x - offset), (element.y)],
+      [(element.x - (0.7071 * offset)), (element.y + (0.7071 * offset))]
+    ]);
+  });
+
+  var hull = d3.polygonHull(fakePoints);
+  if (hull === null) return null;
+  return offsetInterpolate(15)(hull.reverse());
+};
+export {
+  textCrop,
+  innerCircleCollide,
+  parseTime,
+  rectCollide,
+  zoomHandler,
+  groupPath,
+  programmaticZoom,
+  programmaticZoomCircle
+};

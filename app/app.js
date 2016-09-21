@@ -10,11 +10,13 @@ import computeCompGraph from "./lib/componentGraph.js";
 
 import tagListLayout from "./components/tagList.js";
 var tagList = tagListLayout();
-import offsetInterpolate from "./lib/polyOffset.js";
 import marching_squares from "./lib/marchingSquaresHelpers.js";
-
 import {
-  innerCircleCollide
+  innerCircleCollide,
+  programmaticZoom,
+  programmaticZoomCircle,
+  zoomHandler,
+  groupPath
 } from "./lib/utils.js";
 import brewer from "colorbrewer";
 
@@ -28,6 +30,10 @@ const DUMMYNODE_SIZE = 5;
 
 var WIDTH = window.innerWidth * 2 / 3 - 20;
 var HEIGHT = window.innerHeight;
+var DIM = {
+  width: WIDTH,
+  height: HEIGHT
+};
 
 const DOC_WIDTH = 4;
 const DOC_HEIGHT = 6;
@@ -63,77 +69,6 @@ function labelArc(radius) {
 
 }
 
-function zoomHandler(svg) {
-  return d3.zoom()
-    .extent(function() {
-      var bbox = d3.select("#zoom-hull").node().getBoundingClientRect();
-      return [
-        [bbox.x, bbox.y],
-        [bbox.x + bbox.width, bbox.y + bbox.height]
-      ];
-    })
-    .scaleExtent([-100, 40])
-    .on("zoom", function() {
-      var translate = [d3.event.transform.x, d3.event.transform.y];
-      var scale = d3.event.transform.k;
-      svg
-        .transition(1000)
-        .attr("transform", "translate(" + translate + ")scale(" + scale + ")");
-    });
-}
-
-function programmaticZoom(zoomHandler, svg) {
-  return function(self) {
-    var offset = 100;
-    var bbox = self.node().getBBox(),
-      dx = bbox.width + offset,
-      dy = bbox.height + offset,
-      x = (bbox.x + bbox.x + bbox.width) / 2,
-      y = (bbox.y + bbox.y + bbox.height) / 2,
-      scale = Math.max(-20,
-        Math.min(2.5, 1 / Math.max(dx / WIDTH, dy / HEIGHT))),
-      translate = [WIDTH / 2 - scale * x,
-        HEIGHT / 2 - scale * y
-      ];
-
-    zoomHandler.transform(svg,
-      d3.zoomIdentity
-      .translate(translate[0], translate[1])
-      .scale(scale));
-  };
-}
-
-function programmaticZoomCircle(zoomHandler, svg) {
-  return function(d) {
-    console.log("d", d);
-    var offset = 50;
-    var dx = d.width + offset,
-      dy = d.height + offset,
-      x = (d.x),
-      y = (d.y),
-      scale = Math.max(-40, Math.min(8, 1 / Math.max(dx / WIDTH, dy / HEIGHT))),
-      translate = [WIDTH / 2 - scale * x,
-        HEIGHT / 2 - scale * y
-      ];
-    console.log(dx, dy, x, y, scale, translate);
-
-    zoomHandler.transform(svg,
-      d3.zoomIdentity
-      .translate(translate[0], translate[1])
-      .scale(scale));
-  };
-}
-// function zoomTo(v) {
-//     var k = diameter / v[2]; view = v;
-//     node.attr("transform", function(d) {
-//       return (d.x - v[0]) * k + "," + (d.y - v[1]) * k + ")"; });
-//
-//     zoomHandler.transform(svg,
-//       d3.zoomIdentity
-//       .translate(translate[0], translate[1])
-//       .scale(scale));
-//   }
-
 
 var hullcurve = d3.line()
   .curve(d3.curveBasisClosed)
@@ -145,27 +80,6 @@ var hullcurve = d3.line()
 //             .y(d => d.y)
 //             .curve(d3.curveBundle);
 
-var groupPath = function(nodes) {
-  var fakePoints = [];
-  nodes.forEach(function(element) {
-    var offset = element.r;
-    fakePoints = fakePoints.concat([
-      // "0.7071" scale the sine and cosine of 45 degree for corner points.
-      [(element.x), (element.y + offset)],
-      [(element.x + (0.7071 * offset)), (element.y + (0.7071 * offset))],
-      [(element.x + offset), (element.y)],
-      [(element.x + (0.7071 * offset)), (element.y - (0.7071 * offset))],
-      [(element.x), (element.y - offset)],
-      [(element.x - (0.7071 * offset)), (element.y - (0.7071 * offset))],
-      [(element.x - offset), (element.y)],
-      [(element.x - (0.7071 * offset)), (element.y + (0.7071 * offset))]
-    ]);
-  });
-
-  var hull = d3.polygonHull(fakePoints);
-  if (hull === null) return null;
-  return offsetInterpolate(15)(hull.reverse());
-};
 
 function subGraphEnter(c) {
   var self = d3.select(this);
@@ -280,7 +194,7 @@ function subGraphUpdate(zh, svg) {
           .style("cursor", "pointer")
           .style("opacity", c.selected ? 0.3 : 0.01)
           // .on("click", function() {programmaticZoom(zh, svg);});
-          .on("click", () => programmaticZoomCircle(zh, svg)(c))
+          .on("click", () => programmaticZoomCircle(zh, svg, DIM)(c))
           .on("mouseover", function() {
             bubbleCont.selectAll("path").style("opacity", 0.3);
             bubbleCont.selectAll(".bubble-" + set.key).style("opacity", 1);
@@ -303,11 +217,9 @@ function subGraphUpdate(zh, svg) {
               .selectAll("tspan");
 
             tspan
-            .transition(1000)
+              .transition(1000)
               .attr("font-size", d => wordScale(d.values.filter(d => d.selected).length))
               .text(d => d.key + " •");
-
-
           });
         // .on("click", () => bubbleGroupEnter.call(programmaticZoom(0.6)));
 
@@ -481,7 +393,7 @@ function updateCoreView(simulation) {
         .attr("d", groupPath([d.src, d.tgt]))
         .attr("fill", "none");
 
-      zoomHull.call(programmaticZoom(zh, svg));
+      zoomHull.call(programmaticZoom(zh, svg, DIM));
     })
     .on("mouseover", d => {
       svg.selectAll(".comp")
@@ -522,9 +434,9 @@ function updateCoreView(simulation) {
         .style("opacity", e => d.interSet.includes(e.key) ? 1 : 0.1);
       // console.log("gs", srcComp.select(".bc").selectAll("g").data(), d.interSet);
       srcComp.select(".node-cont").selectAll(".doc")
-      .style("opacity", e => _.intersection(e.tags, d.interSet).length > 0 ? 1 : 0.1);
+        .style("opacity", e => _.intersection(e.tags, d.interSet).length > 0 ? 1 : 0.1);
       tgtComp.select(".node-cont").selectAll(".doc")
-      .style("opacity", e => _.intersection(e.tags, d.interSet).length > 0 ? 1 : 0.1);
+        .style("opacity", e => _.intersection(e.tags, d.interSet).length > 0 ? 1 : 0.1);
     })
     .on("mouseout", (d) => {
       svg.selectAll(".comp")
@@ -566,10 +478,10 @@ function updateCoreView(simulation) {
         .style("opacity", 1);
 
       srcComp.select(".node-cont").selectAll(".doc")
-      .style("opacity", 1);
+        .style("opacity", 1);
 
       tgtComp.select(".node-cont").selectAll(".doc")
-      .style("opacity", 1);
+        .style("opacity", 1);
     })
     .select("circle")
     .on("mouseover", () => {
@@ -583,7 +495,7 @@ function updateCoreView(simulation) {
         return dummy.src.selected && dummy.tgt.selected ? 1 : 0.1;
       });
     })
-    .on("click", programmaticZoomCircle(zh, svg));
+    .on("click", programmaticZoomCircle(zh, svg, DIM));
 
   dummy.exit().remove();
 
@@ -639,7 +551,7 @@ function updateCoreView(simulation) {
     // transition not working here
     // .transition(1000)
     .attr("r", d => d.r)
-    .on("click", programmaticZoomCircle(zh, svg));
+    .on("click", programmaticZoomCircle(zh, svg, DIM));
   // .style("opacity", d => d.selected ? 1 : 0.1);
   // .on("click", growComp(simulation));
 
@@ -701,9 +613,9 @@ function updateCoreView(simulation) {
       .attr("d", groupPath(simulation.nodes().filter(c => c.selected)
         .filter(d => !d.dummy)))
       .attr("fill", "none");
-    // .style("opacity", 0.5)
-    //
-    zoomHull.call(programmaticZoom(zh, svg));
+
+    zoomHull.call(programmaticZoom(zh, svg, DIM));
+
     svg
       .call(zh)
       .on("dblclick", null);
@@ -711,7 +623,7 @@ function updateCoreView(simulation) {
 }
 
 d3.json("diigo.json", function(error, data) {
-  var diigo = data.slice(0, 200).map((d, i) => {
+  var diigo = data.slice(0, 300).map((d, i) => {
     d.tags = d.tags.split(",");
     d.id = i;
     return d;
